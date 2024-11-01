@@ -26,6 +26,7 @@ To install and try out the **Ulauncher Plugin/Extension MassCode Integration**, 
    ```
 4. Before restarting Ulauncher, install the required dependencies by running:
    ```bash
+   mkdir -p ~/.local/share/ulauncher/extensions/masscode-snippet/libs
    pip install -r ~/.local/share/ulauncher/extensions/masscode-snippet/requirements.txt -t ~/.local/share/ulauncher/extensions/masscode-snippet/libs
    ```
 5. Restart **[Ulauncher](https://ulauncher.io)**.
