@@ -25,7 +25,7 @@
       "id": "copy_paste_mode",
       "type": "select",
       "name": "Copy/Paste Mode",
-      "description": "Choose how snippets are handled: copy to clipboard, paste directly, or both.",
+      "description": "Choose how snippets are handled: copy to clipboard, paste directly, or both. (for the moment only the copy function works normally 2024-11-01)",
       "default_value": "copy",
       "options": [
         {"value": "copy", "text": "Copy to Clipboard"},
