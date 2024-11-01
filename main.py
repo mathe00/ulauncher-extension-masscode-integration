@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 import os
 import sys
+
+# Add libs folder to sys.path
+sys.path.append(os.path.join(os.path.dirname(__file__), 'libs'))
+
 import json
 import logging
 import subprocess
@@ -11,15 +15,14 @@ from ulauncher.api.shared.item.ExtensionResultItem import ExtensionResultItem
 from ulauncher.api.shared.action.RenderResultListAction import RenderResultListAction
 from ulauncher.api.shared.action.CopyToClipboardAction import CopyToClipboardAction
 from ulauncher.api.shared.action.BaseAction import BaseAction
-from fuzzywuzzy import fuzz, process
+from fuzzywuzzy import fuzz
 
-# History file to store user's selected snippets based on previous queries
+# Path to history file
 HISTORY_FILE = os.path.join(os.path.dirname(__file__), 'history.json')
 
-# Configure logging level
+# Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
-
 
 class MassCodeExtension(Extension):
     def __init__(self):
@@ -27,130 +30,88 @@ class MassCodeExtension(Extension):
         self.subscribe(KeywordQueryEvent, KeywordQueryEventListener())
         self.subscribe(ItemEnterEvent, ItemEnterEventListener())
 
+    def load_snippets(self, db_path):
+        """Load snippets from db.json file"""
+        try:
+            with open(db_path, 'r') as f:
+                data = json.load(f)
+            return [snippet for snippet in data.get("snippets", []) if not snippet.get("isDeleted", False)]
+        except Exception as e:
+            logger.error("Error loading snippets from db.json: %s", e)
+            return []
+
+    def load_history(self):
+        """Load selection history from history.json file"""
+        try:
+            with open(HISTORY_FILE, 'r') as f:
+                return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return {}
+
+    def save_history(self, history):
+        """Save selection history to history.json file"""
+        try:
+            with open(HISTORY_FILE, 'w') as f:
+                json.dump(history, f, indent=4)
+        except Exception as e:
+            logger.error("Error saving selection history: %s", e)
 
 class KeywordQueryEventListener(EventListener):
     def on_event(self, event, extension):
         query = event.get_argument() or ""
-        snippets_path = os.path.expanduser(extension.preferences['mc_db_path'])
-        copy_paste_mode = extension.preferences['copy_paste_mode']
-        items = []
+        preferences = extension.preferences
+        db_path = os.path.expanduser(preferences['mc_db_path'])
+        snippets = extension.load_snippets(db_path)
+        history = extension.load_history()
 
-        logger.debug(f"Query: {query}")
-        logger.debug(f"Snippets Path: {snippets_path}")
-        logger.debug(f"Copy Paste Mode: {copy_paste_mode}")
+        # History for this specific query
+        query_history = history.get(query, {})
 
-        try:
-            with open(snippets_path, 'r') as file:
-                data = json.load(file)
-                all_snippets = data['snippets']
-                
-                snippet_strings = [
-                    {
-                        "id": snippet['id'],
-                        "name": snippet['name'],
-                        "content": ' '.join(content['value'] for content in snippet['content'])
-                    } for snippet in all_snippets
-                ]
-
-                matches = self.get_ranked_matches(query, snippet_strings)
-
-                for match in matches:
-                    matched_snippet = match['snippet']
-                    content_str = matched_snippet['content']
-                    description = (content_str[:100] + '...') if len(content_str) > 100 else content_str
-                    action = self.determine_action(copy_paste_mode, content_str)
-
-                    items.append(ExtensionResultItem(
-                        icon='images/icon.png',
-                        name=self.wrap_text(self.highlight_match(matched_snippet['name'], query), 50),
-                        description=description,
-                        on_enter=action,
-                        data={"query": query, "snippet_id": matched_snippet['id']}
-                    ))
-
-            return RenderResultListAction(items)
-
-        except Exception as e:
-            logger.error(f"Error during snippet search: {e}")
-            return RenderResultListAction([
-                ExtensionResultItem(icon='images/icon.png',
-                                    name='Error',
-                                    description='An error occurred. Check the logs.',
-                                    on_enter=CopyToClipboardAction(''))
-            ])
-
-    def get_ranked_matches(self, query, snippets):
-        """Returns snippets sorted by match score, using user's selection history."""
-        query_lower = query.lower()
-        history = self.load_history()
-
-        # Retrieve fuzzy matches for the query
-        fuzzy_matches = process.extract(query, [(snippet['name'] + ' ' + snippet['content']) for snippet in snippets], scorer=fuzz.token_sort_ratio, limit=10)
-
-        # Link matched snippets to their IDs and fuzzy scores
+        # Build a list of results based on history and fuzzy scores
         matches = []
-        for text, score in fuzzy_matches:
-            matched_snippet = next(snippet for snippet in snippets if snippet['name'] + ' ' + snippet['content'] == text)
-            selection_count = history.get(query_lower, {}).get(matched_snippet['id'], 0)
-            matches.append({"snippet": matched_snippet, "score": score + selection_count * 10})
 
-        # Sort snippets based on fuzzy score combined with selection frequency
-        matches.sort(key=lambda x: x['score'], reverse=True)
-        return matches
+        for snippet in snippets:
+            name = snippet.get('name', '')
+            content = snippet.get('content', '')
 
-    def highlight_match(self, text, query):
-        words = query.split()
-        for word in words:
-            text = text.replace(word, f"<b>{word}</b>")
-        return text
-
-    def wrap_text(self, text, width):
-        words = text.split()
-        lines = []
-        current_line = ""
-
-        for word in words:
-            if len(current_line) + len(word) + 1 <= width:
-                current_line += (word + " ")
+            if isinstance(content, list):
+                content_text = "\n".join(fragment.get('value', '') for fragment in content)
             else:
-                lines.append(current_line.strip())
-                current_line = word + " "
+                content_text = content
 
-        if current_line:
-            lines.append(current_line.strip())
+            title_score = fuzz.partial_ratio(query.lower(), name.lower())
+            content_score = fuzz.partial_ratio(query.lower(), content_text.lower())
+            combined_score = (0.8 * title_score) + (0.2 * content_score)
 
-        return '\n'.join(lines)
+            if combined_score > 50:
+                matches.append({
+                    'snippet': snippet,
+                    'score': combined_score,
+                    'history_count': query_history.get(name, 0)  # Number of selections for this query
+                })
 
-    def determine_action(self, mode, content):
-        if mode == 'copy':
-            return CopyToClipboardAction(content)
-        elif mode == 'paste':
-            return BaseAction(lambda: subprocess.call("xdotool type --delay 1 '{}'".format(content.replace("'", "\\'")), shell=True))
-        elif mode == 'both':
-            def do_both():
-                subprocess.call("echo '{}' | xclip -selection clipboard".format(content.replace("'", "\\'")), shell=True)
-                subprocess.call("xdotool type --delay 1 '{}'".format(content.replace("'", "\\'")), shell=True)
-            return BaseAction(do_both)
+        # Sort: first by number of selections for this query, then by similarity score
+        matches.sort(key=lambda x: (-x['history_count'], -x['score']))
 
-    def save_to_history(self, query, snippet_id):
-        history = self.load_history()
-        query_lower = query.lower()
+        items = []
+        copy_paste_mode = preferences.get('copy_paste_mode', 'copy')
 
-        if query_lower not in history:
-            history[query_lower] = {}
-        if snippet_id not in history[query_lower]:
-            history[query_lower][snippet_id] = 0
-        history[query_lower][snippet_id] += 1
+        for match in matches[:5]:  # Limit to 5 results
+            snippet = match['snippet']
+            content_text = "\n".join(fragment.get('value', '') for fragment in snippet['content']) if isinstance(snippet['content'], list) else snippet['content']
 
-        with open(HISTORY_FILE, 'w') as history_file:
-            json.dump(history, history_file)
+            # Define action based on mode
+            action = CopyToClipboardAction(content_text)  # Simply copy the content
 
-    def load_history(self):
-        if not os.path.exists(HISTORY_FILE):
-            return {}
-        with open(HISTORY_FILE, 'r') as history_file:
-            return json.load(history_file)
+            # Add item to results
+            items.append(ExtensionResultItem(
+                icon='images/icon.png',
+                name=snippet['name'],
+                description=content_text[:100] + '...' if len(content_text) > 100 else content_text,
+                on_enter=action
+            ))
 
+        return RenderResultListAction(items)
 
 class ItemEnterEventListener(EventListener):
     def on_event(self, event, extension):
@@ -158,19 +119,28 @@ class ItemEnterEventListener(EventListener):
         if not data:
             return RenderResultListAction([])
 
-        query = data.get('query', '')
-        snippet_id = data.get('snippet_id', '')
-        snippet_content = data.get('content', '')
+        # Extract data for history update
+        query = data.get('query')
+        snippet_name = data.get('snippet_name')
 
-        KeywordQueryEventListener().save_to_history(query, snippet_id)
+        # Update history
+        history = extension.load_history()
+        if query not in history:
+            history[query] = {}
+        if snippet_name not in history[query]:
+            history[query][snippet_name] = 0
+        history[query][snippet_name] += 1  # Increment counter
+        extension.save_history(history)
 
+        # Display action result
         return RenderResultListAction([
-            ExtensionResultItem(icon='images/icon.png',
-                                name='Snippet copied',
-                                description='Content copied to clipboard',
-                                on_enter=CopyToClipboardAction(snippet_content))
+            ExtensionResultItem(
+                icon='images/icon.png',
+                name='Snippet copied',
+                description='Content copied to clipboard',
+                on_enter=CopyToClipboardAction(data.get('content', ''))
+            )
         ])
-
 
 if __name__ == '__main__':
     MassCodeExtension().run()
