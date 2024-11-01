@@ -22,11 +22,15 @@ To install and try out the **Ulauncher Plugin/Extension MassCode Integration**, 
    ```
 3. Clone this repository or move the downloaded files there:
    ```bash
-   git clone https://github.com/your-username/ulauncher-plugin-masscode-integration.git
+   git clone https://github.com/mathe00/ulauncher-extension-masscode-integration.git
    ```
-4. Restart **[Ulauncher](https://ulauncher.io)**.
+4. Before restarting Ulauncher, install the required dependencies by running:
+   ```bash
+   pip install -r ~/.local/share/ulauncher/extensions/masscode-snippet/requirements.txt -t ~/.local/share/ulauncher/extensions/masscode-snippet/libs
+   ```
+5. Restart **[Ulauncher](https://ulauncher.io)**.
 
-5. **Important:** After installation, it is highly recommended to configure the settings for the extension. You can do this by opening Ulauncher, navigating to the extensions section, and adjusting the preferences of the MassCode plugin/extension. This includes setting the path to your MassCode database and choosing how snippets should be handled (copy to clipboard, paste directly, etc.).
+6. **Important:** After installation, it is highly recommended to configure the settings for the extension. Open Ulauncher, navigate to the extensions section, and adjust the preferences for the MassCode plugin/extension. This includes setting the path to your MassCode database and choosing how snippets should be handled (e.g., copy to clipboard, paste directly, etc.).
 
 That’s it! The plugin/extension is now installed, and you can start searching your MassCode snippets directly from **[Ulauncher](https://github.com/Ulauncher/Ulauncher)**.
 
