@@ -1,0 +1,3 @@
+Install requirements with this command :
+
+pip install -r ~/.local/share/ulauncher/extensions/masscode-snippet/requirements.txt -t ~/.local/share/ulauncher/extensions/masscode-snippet/libs
