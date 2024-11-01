@@ -11,7 +11,7 @@
     {
       "id": "mc_keyword",
       "type": "keyword",
-      "name": "Activation Keyword",
+      "name": "Masscode Snippet",
       "default_value": "ms"
     },
     {
