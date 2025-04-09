@@ -1,2 +1,3 @@
 libs/*
 !libs/install_requirements_here.txt
+**/context_history.json
