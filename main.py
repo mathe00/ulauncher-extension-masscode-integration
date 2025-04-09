@@ -87,7 +87,12 @@ class MassCodeExtension(Extension):
             logger.error(f"Error saving selection history: {str(e)}")
     
     def update_context_history(self, query: str, snippet_name: str) -> None:
-        """Update context-specific selection history"""
+        """Update context-specific selection history if enabled in preferences"""
+        # Check if history and contextual autocomplete are enabled
+        if (self.preferences.get('enable_history', 'true') != 'true' or 
+            self.preferences.get('enable_contextual_autocomplete', 'true') != 'true'):
+            return
+        
         history = self.load_context_history()
         
         # Normalize query for consistency
@@ -126,18 +131,24 @@ class KeywordQueryEventListener(EventListener):
             snippets = extension.load_snippets(db_path)
             if not snippets:
                 return self._show_error("No snippets found or database path is incorrect")
-                
-            # Load context history
-            context_history = extension.load_context_history()
             
-            # Find exact and similar queries in history
-            relevant_contexts = self._find_relevant_contexts(query, context_history)
+            # Check if contextual autocomplete is enabled
+            contextual_enabled = preferences.get('enable_contextual_autocomplete', 'true') == 'true'
+            history_enabled = preferences.get('enable_history', 'true') == 'true'
             
-            # Match snippets and sort with context awareness
-            matches = self._get_matches_with_context(query, snippets, relevant_contexts)
+            # Load context history if enabled
+            context_history = {}
+            relevant_contexts = {}
+            if contextual_enabled and history_enabled:
+                context_history = extension.load_context_history()
+                relevant_contexts = self._find_relevant_contexts(query, context_history)
+            
+            # Match snippets and sort with context awareness if enabled
+            matches = self._get_matches_with_context(query, snippets, 
+                                                    relevant_contexts if contextual_enabled else {})
             
             # Build result items
-            items = self._create_result_items(matches, query, preferences)
+            items = self._create_result_items(matches, query, preferences, contextual_enabled)
             
             return RenderResultListAction(items)
         except Exception as e:
@@ -201,7 +212,7 @@ class KeywordQueryEventListener(EventListener):
         
         snippet_context_score = {}  # Store context scores for each snippet
         
-        # Calculate context scores for each snippet
+        # Calculate context scores for each snippet (if context is enabled)
         for context_query, context_data in relevant_contexts.items():
             context_relevance = context_data['relevance']
             for snippet_name, selection_count in context_data['snippets'].items():
@@ -266,7 +277,7 @@ class KeywordQueryEventListener(EventListener):
         return (context_matches + regular_matches)[:8]  # Limit to 8 results total
 
     def _create_result_items(self, matches: List[Dict], query: str, 
-                            preferences) -> List[ExtensionResultItem]:
+                            preferences, contextual_enabled: bool) -> List[ExtensionResultItem]:
         """Create ExtensionResultItem objects from matches"""
         items = []
         
@@ -291,8 +302,8 @@ class KeywordQueryEventListener(EventListener):
             if len(description) > 100:
                 description = description[:97] + '...'
                 
-            # Add indicator if this is a contextual suggestion
-            if match['context_score'] > 0:
+            # Add indicator if this is a contextual suggestion (only when contextual is enabled)
+            if contextual_enabled and match['context_score'] > 0:
                 name_prefix = "★ "  # Star to indicate contextual choice
             else:
                 name_prefix = ""
@@ -339,9 +350,16 @@ class ItemEnterEventListener(EventListener):
             snippet_name = data.get('snippet_name', '')
             content = data.get('content', '')
             
-            # Update context history only if query is not empty
-            if query.strip():
+            # Get preferences for contextual features
+            contextual_enabled = extension.preferences.get('enable_contextual_autocomplete', 'true') == 'true'
+            history_enabled = extension.preferences.get('enable_history', 'true') == 'true'
+            
+            # Update context history only if query is not empty and features are enabled
+            if query.strip() and contextual_enabled and history_enabled:
                 extension.update_context_history(query, snippet_name)
+            
+            # Get copy/paste mode preference
+            copy_mode = extension.preferences.get('copy_paste_mode', 'copy')
             
             # Copy content to clipboard and show confirmation
             return RenderResultListAction([
