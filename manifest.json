@@ -1,8 +1,8 @@
 {
   "required_api_version": "^2.0.0",
   "name": "MassCode Snippets",
-  "description": "Recherchez et récupérez des snippets depuis MassCode avec apprentissage contextuel.",
-  "developer_name": "VotreNomOuPseudo",
+  "description": "Search and retrieve snippets from MassCode with contextual learning.",
+  "developer_name": "YourNameOrUsername",
   "icon": "images/icon.png",
   "options": {
     "query_debounce": 0.05
@@ -11,36 +11,36 @@
     {
       "id": "mc_keyword",
       "type": "keyword",
-      "name": "Mot-clé Masscode",
-      "description": "Le mot-clé pour activer la recherche de snippets MassCode.",
+      "name": "MassCode Keyword",
+      "description": "The keyword to activate the MassCode snippet search.",
       "default_value": "ms"
     },
     {
       "id": "mc_db_path",
       "type": "input",
-      "name": "Chemin DB MassCode",
-      "description": "Chemin vers votre fichier de base de données MassCode (db.json).",
+      "name": "MassCode DB Path",
+      "description": "Path to your MassCode database file (db.json).",
       "default_value": "~/massCode/db.json"
     },
     {
       "id": "copy_paste_mode",
       "type": "select",
-      "name": "Mode Copier/Coller",
-      "description": "Choisissez comment gérer les snippets : copier dans le presse-papiers. (Seule la copie fonctionne actuellement).",
+      "name": "Copy/Paste Mode",
+      "description": "Choose how to manage snippets: copy to the clipboard. (Only copy functionality is currently working).",
       "default_value": "copy",
       "options": [
-        {"value": "copy", "text": "Copier dans le presse-papiers"}
+        {"value": "copy", "text": "Copy to Clipboard"}
       ]
     },
     {
-      "id": "activer_apprentissage_contextuel",
+      "id": "enable_contextual_learning",
       "type": "select",
-      "name": "Activer l'Apprentissage Contextuel",
-      "description": "Active l'enregistrement de l'historique de sélection et l'utilise pour prioriser les snippets pertinents en fonction du contexte de recherche.",
+      "name": "Enable Contextual Learning",
+      "description": "Enables selection history recording and uses it to prioritize relevant snippets based on the search context.",
       "default_value": "true",
       "options": [
-        {"value": "true", "text": "Activé"},
-        {"value": "false", "text": "Désactivé"}
+        {"value": "true", "text": "Enabled"},
+        {"value": "false", "text": "Disabled"}
       ]
     }
   ]
