@@ -88,6 +88,10 @@ class MassCodeExtension(Extension):
     
     def update_context_history(self, query: str, snippet_name: str) -> None:
         """Update context-specific selection history"""
+        # Check if contextual autocomplete is enabled
+        if self.preferences.get('enable_contextual_autocomplete', 'true') != 'true':
+            return
+            
         history = self.load_context_history()
         
         # Normalize query for consistency
@@ -126,12 +130,15 @@ class KeywordQueryEventListener(EventListener):
             snippets = extension.load_snippets(db_path)
             if not snippets:
                 return self._show_error("No snippets found or database path is incorrect")
-                
-            # Load context history
-            context_history = extension.load_context_history()
             
-            # Find exact and similar queries in history
-            relevant_contexts = self._find_relevant_contexts(query, context_history)
+            # Check if contextual autocomplete is enabled
+            contextual_enabled = preferences.get('enable_contextual_autocomplete', 'true') == 'true'
+            
+            # Load context history only if feature is enabled
+            context_history = extension.load_context_history() if contextual_enabled else {}
+            
+            # Find exact and similar queries in history (if feature enabled)
+            relevant_contexts = self._find_relevant_contexts(query, context_history) if contextual_enabled else {}
             
             # Match snippets and sort with context awareness
             matches = self._get_matches_with_context(query, snippets, relevant_contexts)
@@ -269,6 +276,7 @@ class KeywordQueryEventListener(EventListener):
                             preferences) -> List[ExtensionResultItem]:
         """Create ExtensionResultItem objects from matches"""
         items = []
+        contextual_enabled = preferences.get('enable_contextual_autocomplete', 'true') == 'true'
         
         for match in matches:
             snippet = match['snippet']
@@ -291,8 +299,8 @@ class KeywordQueryEventListener(EventListener):
             if len(description) > 100:
                 description = description[:97] + '...'
                 
-            # Add indicator if this is a contextual suggestion
-            if match['context_score'] > 0:
+            # Add indicator if this is a contextual suggestion (only if enabled)
+            if contextual_enabled and match['context_score'] > 0:
                 name_prefix = "★ "  # Star to indicate contextual choice
             else:
                 name_prefix = ""

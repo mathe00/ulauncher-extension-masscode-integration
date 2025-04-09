@@ -43,6 +43,17 @@
         {"value": "true", "text": "Enabled"},
         {"value": "false", "text": "Disabled"}
       ]
+    },
+    {
+      "id": "enable_contextual_autocomplete",
+      "type": "select",
+      "name": "Contextual Autocomplete",
+      "description": "Enable or disable personalized contextual autocomplete feature that learns from your selections.",
+      "default_value": "true",
+      "options": [
+        {"value": "true", "text": "Enabled"},
+        {"value": "false", "text": "Disabled"}
+      ]
     }
   ]
 }
