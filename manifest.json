@@ -1,8 +1,8 @@
 {
   "required_api_version": "^2.0.0",
   "name": "MassCode Snippets",
-  "description": "Search and retrieve snippets from MassCode",
-  "developer_name": "Author",
+  "description": "Recherchez et récupérez des snippets depuis MassCode avec apprentissage contextuel.",
+  "developer_name": "VotreNomOuPseudo",
   "icon": "images/icon.png",
   "options": {
     "query_debounce": 0.05
@@ -11,48 +11,36 @@
     {
       "id": "mc_keyword",
       "type": "keyword",
-      "name": "Masscode Snippet",
+      "name": "Mot-clé Masscode",
+      "description": "Le mot-clé pour activer la recherche de snippets MassCode.",
       "default_value": "ms"
     },
     {
       "id": "mc_db_path",
       "type": "input",
-      "name": "MassCode DB Path",
-      "description": "Path to your MassCode database file",
+      "name": "Chemin DB MassCode",
+      "description": "Chemin vers votre fichier de base de données MassCode (db.json).",
       "default_value": "~/massCode/db.json"
     },
     {
       "id": "copy_paste_mode",
       "type": "select",
-      "name": "Copy/Paste Mode",
-      "description": "Choose how snippets are handled: copy to clipboard, paste directly, or both. (for the moment only the copy function works normally 2024-11-01)",
+      "name": "Mode Copier/Coller",
+      "description": "Choisissez comment gérer les snippets : copier dans le presse-papiers. (Seule la copie fonctionne actuellement).",
       "default_value": "copy",
       "options": [
-        {"value": "copy", "text": "Copy to Clipboard"},
-        {"value": "paste", "text": "Paste Directly"},
-        {"value": "both", "text": "Copy & Paste"}
+        {"value": "copy", "text": "Copier dans le presse-papiers"}
       ]
     },
     {
-      "id": "enable_history",
+      "id": "activer_apprentissage_contextuel",
       "type": "select",
-      "name": "Enable History",
-      "description": "Enable or disable search history.",
+      "name": "Activer l'Apprentissage Contextuel",
+      "description": "Active l'enregistrement de l'historique de sélection et l'utilise pour prioriser les snippets pertinents en fonction du contexte de recherche.",
       "default_value": "true",
       "options": [
-        {"value": "true", "text": "Enabled"},
-        {"value": "false", "text": "Disabled"}
-      ]
-    },
-    {
-      "id": "enable_contextual_autocomplete",
-      "type": "select",
-      "name": "Contextual Autocomplete",
-      "description": "Enable or disable personalized contextual autocomplete feature that learns from your selections.",
-      "default_value": "true",
-      "options": [
-        {"value": "true", "text": "Enabled"},
-        {"value": "false", "text": "Disabled"}
+        {"value": "true", "text": "Activé"},
+        {"value": "false", "text": "Désactivé"}
       ]
     }
   ]
