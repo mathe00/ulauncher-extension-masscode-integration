@@ -21,7 +21,6 @@ from ulauncher.api.shared.event import KeywordQueryEvent, ItemEnterEvent
 from ulauncher.api.shared.item.ExtensionResultItem import ExtensionResultItem
 from ulauncher.api.shared.action.RenderResultListAction import RenderResultListAction
 from ulauncher.api.shared.action.CopyToClipboardAction import CopyToClipboardAction
-from ulauncher.api.shared.action.ExtensionCustomAction import ExtensionCustomAction
 from fuzzywuzzy import fuzz
 
 # Paths
@@ -144,19 +143,97 @@ class KeywordQueryEventListener(EventListener):
                 relevant_contexts = self._find_relevant_contexts(query, context_history)
             
             # Match snippets and sort with context awareness if enabled
-            matches = self._get_matches_with_context(query, snippets, 
-                                                    relevant_contexts if contextual_enabled else {})
+            matches = []
+            
+            for snippet in snippets:
+                name = snippet.get('name', '')
+                content = snippet.get('content', '')
+
+                # Extract text content
+                if isinstance(content, list):
+                    content_text = "\n".join(fragment.get('value', '') 
+                                          for fragment in content)
+                else:
+                    content_text = content
+                
+                # Calculate fuzzy match scores
+                title_score = 100 if not query else fuzz.partial_ratio(
+                    query.lower(), name.lower())
+                content_score = 80 if not query else fuzz.partial_ratio(
+                    query.lower(), content_text.lower())
+                
+                # Combined score with title having more weight
+                combined_score = (0.7 * title_score) + (0.3 * content_score)
+                
+                # Only include if score exceeds threshold or query is empty
+                if combined_score > 50 or not query:
+                    # Get context score if enabled
+                    context_score = 0
+                    if contextual_enabled and history_enabled:
+                        # Check if this snippet has been selected before in relevant contexts
+                        for context_query, context_data in relevant_contexts.items():
+                            if name in context_data['snippets']:
+                                # Context score = (times selected) * (context relevance)
+                                selection_count = context_data['snippets'][name]
+                                relevance = context_data['relevance']
+                                context_score = max(context_score, selection_count * relevance)
+                    
+                    # Add to matches
+                    matches.append({
+                        'snippet': snippet,
+                        'name': name,
+                        'content': content_text,
+                        'fuzzy_score': combined_score,
+                        'context_score': context_score
+                    })
+            
+            # Sort matches
+            if contextual_enabled and history_enabled:
+                # Sort by context score first, then fuzzy score
+                matches.sort(key=lambda x: (-x['context_score'], -x['fuzzy_score']))
+            else:
+                # Sort just by fuzzy score
+                matches.sort(key=lambda x: -x['fuzzy_score'])
             
             # Build result items
-            items = self._create_result_items(matches, query, preferences, contextual_enabled)
+            items = []
+            for match in matches[:8]:  # Limit to 8 results
+                snippet = match['snippet']
+                name = match['name']
+                content_text = match['content']
+                
+                # Add star indicator for contextual matches
+                prefix = "★ " if contextual_enabled and match['context_score'] > 0 else ""
+                
+                # Description: truncate if too long
+                description = content_text.replace("\n", " ")
+                if len(description) > 100:
+                    description = description[:97] + '...'
+                
+                # Create direct CopyToClipboardAction
+                items.append(ExtensionResultItem(
+                    icon='images/icon.png',
+                    name=f"{prefix}{name}",
+                    description=description,
+                    on_enter=CopyToClipboardAction(content_text)
+                ))
+            
+            # If no matches were found
+            if not items:
+                items.append(ExtensionResultItem(
+                    icon='images/icon.png',
+                    name='No matching snippets found',
+                    description='Try a different search term',
+                    on_enter=RenderResultListAction([])
+                ))
             
             return RenderResultListAction(items)
         except Exception as e:
             logger.error(f"Error processing query: {str(e)}")
             return self._show_error(f"Error: {str(e)}")
-
+    
     def _find_relevant_contexts(self, query: str, 
-                              context_history: Dict[str, Dict[str, int]]) -> Dict[str, Dict[str, float]]:
+                              context_history: Dict[str, Dict[str, int]]) -> Dict[str, Dict[str, Any]]:
         """Find exact and similar queries in history with their relevance scores"""
         normalized_query = query.lower().strip()
         if not normalized_query:
@@ -203,130 +280,7 @@ class KeywordQueryEventListener(EventListener):
                     }
         
         return relevant_contexts
-
-    def _get_matches_with_context(self, query: str, snippets: List[Dict], 
-                                relevant_contexts: Dict[str, Dict[str, Any]]) -> List[Dict]:
-        """Match snippets against query with context awareness"""
-        matches = []
-        normalized_query = query.lower().strip()
-        
-        snippet_context_score = {}  # Store context scores for each snippet
-        
-        # Calculate context scores for each snippet (if context is enabled)
-        for context_query, context_data in relevant_contexts.items():
-            context_relevance = context_data['relevance']
-            for snippet_name, selection_count in context_data['snippets'].items():
-                # Context score = (times selected) * (context relevance to current query)
-                context_score = selection_count * context_relevance
-                snippet_context_score[snippet_name] = max(
-                    snippet_context_score.get(snippet_name, 0),
-                    context_score
-                )
-        
-        # Score and match all snippets
-        for snippet in snippets:
-            name = snippet.get('name', '')
-            content = snippet.get('content', '')
-            
-            # Extract text content
-            if isinstance(content, list):
-                content_text = "\n".join(fragment.get('value', '') 
-                                        for fragment in content)
-            else:
-                content_text = content
-            
-            # Calculate fuzzy match scores
-            title_score = 100 if normalized_query == "" else fuzz.partial_ratio(
-                normalized_query, name.lower())
-            content_score = 80 if normalized_query == "" else fuzz.partial_ratio(
-                normalized_query, content_text.lower())
-            
-            # Combined score with title having more weight
-            combined_score = (0.7 * title_score) + (0.3 * content_score)
-            
-            # Only include if score exceeds threshold or query is empty
-            if combined_score > 50 or not normalized_query:
-                # Get context score if this snippet has been selected before
-                context_score = snippet_context_score.get(name, 0)
                 
-                # Add to matches
-                matches.append({
-                    'snippet': snippet,
-                    'name': name,
-                    'content': content_text,
-                    'fuzzy_score': combined_score,
-                    'context_score': context_score
-                })
-                
-        # Sort matches
-        return self._sort_matches(matches)
-
-    def _sort_matches(self, matches: List[Dict]) -> List[Dict]:
-        """Sort matches based on context scores and fuzzy scores"""
-        # First, separate matches with context history vs. without
-        context_matches = [m for m in matches if m['context_score'] > 0]
-        regular_matches = [m for m in matches if m['context_score'] == 0]
-        
-        # Sort context matches by context score (and fuzzy score as tiebreaker)
-        context_matches.sort(key=lambda x: (-x['context_score'], -x['fuzzy_score']))
-        
-        # Sort regular matches by fuzzy score
-        regular_matches.sort(key=lambda x: -x['fuzzy_score'])
-        
-        # Return context matches followed by regular matches (limited to reasonable number)
-        return (context_matches + regular_matches)[:8]  # Limit to 8 results total
-
-    def _create_result_items(self, matches: List[Dict], query: str, 
-                            preferences, contextual_enabled: bool) -> List[ExtensionResultItem]:
-        """Create ExtensionResultItem objects from matches"""
-        items = []
-        
-        for match in matches:
-            snippet = match['snippet']
-            name = match['name']
-            content_text = match['content']
-            
-            # Prepare data for tracking selection
-            data = {
-                'query': query,
-                'snippet_name': name,
-                'content': content_text,
-                'has_context': match['context_score'] > 0
-            }
-            
-            # Create action that will report selection to the extension
-            action = ExtensionCustomAction(data, keep_app_open=False)
-            
-            # Format description - truncate if too long
-            description = content_text.replace("\n", " ")
-            if len(description) > 100:
-                description = description[:97] + '...'
-                
-            # Add indicator if this is a contextual suggestion (only when contextual is enabled)
-            if contextual_enabled and match['context_score'] > 0:
-                name_prefix = "★ "  # Star to indicate contextual choice
-            else:
-                name_prefix = ""
-            
-            # Add item to results
-            items.append(ExtensionResultItem(
-                icon='images/icon.png',
-                name=f"{name_prefix}{name}",
-                description=description,
-                on_enter=action
-            ))
-            
-        # If no matches were found
-        if not items:
-            items.append(ExtensionResultItem(
-                icon='images/icon.png',
-                name='No matching snippets found',
-                description='Try a different search term',
-                on_enter=RenderResultListAction([])
-            ))
-            
-        return items
-    
     def _show_error(self, message: str) -> RenderResultListAction:
         """Show an error message in the results"""
         return RenderResultListAction([
@@ -340,36 +294,24 @@ class KeywordQueryEventListener(EventListener):
 
 class ItemEnterEventListener(EventListener):
     def on_event(self, event: ItemEnterEvent, extension: MassCodeExtension):
-        data = event.get_data()
-        if not data:
-            return RenderResultListAction([])
-        
         try:
-            # Extract data
-            query = data.get('query', '')
-            snippet_name = data.get('snippet_name', '')
-            content = data.get('content', '')
+            data = event.get_data()
+            if isinstance(data, str):
+                # Handle direct string data (from CopyToClipboardAction)
+                # Nothing to do here as CopyToClipboardAction handles the copying
+                return
             
-            # Get preferences for contextual features
-            contextual_enabled = extension.preferences.get('enable_contextual_autocomplete', 'true') == 'true'
-            history_enabled = extension.preferences.get('enable_history', 'true') == 'true'
+            # Handle dictionary data if we still have custom actions somewhere
+            query = data.get('query', '') if data else ''
+            snippet_name = data.get('snippet_name', '') if data else ''
+            content = data.get('content', '') if data else ''
             
-            # Update context history only if query is not empty and features are enabled
-            if query.strip() and contextual_enabled and history_enabled:
+            # Update context history only if query is not empty
+            if query.strip():
                 extension.update_context_history(query, snippet_name)
-            
-            # Get copy/paste mode preference
-            copy_mode = extension.preferences.get('copy_paste_mode', 'copy')
-            
-            # Copy content to clipboard and show confirmation
-            return RenderResultListAction([
-                ExtensionResultItem(
-                    icon='images/icon.png',
-                    name='Snippet copied: ' + snippet_name[:30],
-                    description='Content copied to clipboard',
-                    on_enter=CopyToClipboardAction(content)
-                )
-            ])
+                
+            # Already copied by CopyToClipboardAction
+            return RenderResultListAction([])
         except Exception as e:
             logger.error(f"Error processing item selection: {str(e)}")
             return RenderResultListAction([
