@@ -68,10 +68,6 @@ Here are some examples of how the Ulauncher Plugin/Extension MassCode Integratio
 <img src="https://github.com/user-attachments/assets/11c427c6-7472-4177-a515-d30e595d0acd" alt="image" width="500"/>
 <img src="https://github.com/user-attachments/assets/9ae7e59b-cf36-4c51-802a-6512d550649b" alt="image" width="500"/>
 
-New contextual autocomplete in action:
-
-<img src="https://example.com/path-to-autocomplete-screenshot.png" alt="Contextual autocomplete example" width="500"/>
-
 Feel free to include your own screenshots to showcase how the plugin/extension works in action!
 
 ## 🧠 Technical Details
