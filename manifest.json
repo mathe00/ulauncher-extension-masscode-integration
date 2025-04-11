@@ -2,7 +2,7 @@
   "required_api_version": "^2.0.0",
   "name": "MassCode Snippets",
   "description": "Search and retrieve snippets from MassCode with contextual learning.",
-  "developer_name": "YourNameOrUsername",
+  "developer_name": "ARandomGuy",
   "icon": "images/icon.png",
   "options": {
     "query_debounce": 0.05
