@@ -42,6 +42,13 @@
         {"value": "true", "text": "Enabled"},
         {"value": "false", "text": "Disabled"}
       ]
+    },
+    {
+      "id": "smart_single_result_ratio",
+      "type": "input",
+      "name": "Smart Single Result Ratio (0.0-1.0)",
+      "description": "If a snippet's selection count for a query exceeds this ratio (e.g., 0.9 for 90%) of total selections for that query, show only that snippet. Set to 0 or an invalid value to disable. Example: 0.75",
+      "default_value": "0.0"
     }
   ]
 }

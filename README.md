@@ -9,55 +9,77 @@ This plugin/extension allows you to easily access your **[MassCode](https://mass
 - 🔍 **Quick snippet search**: Type a keyword in Ulauncher to search through your MassCode snippets.
 - 📂 **Choose database path**: You can specify the path to the JSON file containing your MassCode snippets.
 - 📄 **Snippet preview**: View the content of your snippets directly in Ulauncher.
-- 🌟 **NEW! Personalized contextual autocomplete**: The extension now intelligently prioritizes snippets based on your usage patterns.
+- 🌟 **Personalized contextual autocomplete**: The extension intelligently prioritizes snippets based on your usage patterns.
+- ✨ **NEW! Smart Single Result**: Optionally, if a snippet overwhelmingly dominates your selections for a specific query, the extension can show only that snippet.
 - ⏩ **Quick access**: Choose between copying the snippet to your clipboard or pasting it directly (okay, the pasting option isn't functional yet, but one day... maybe?).
 
-## 🆕 What's New (2025-04-09)
+## 🆕 What's New (Recent Update)
 
-We've just rolled out a major update to enhance your productivity:
+We've rolled out updates to enhance your productivity:
 
 ### 🌟 Personalized Contextual Autocomplete
 
-- The extension now learns from your search patterns and selections to prioritize the snippets you frequently use in specific contexts
-- When you search with a term similar to previous searches, snippets you've selected before will be marked with a star (★) and appear higher in results
-- The system is smart enough to only boost results when your current search is contextually relevant to your history
+- The extension learns from your search patterns and selections to prioritize the snippets you frequently use in specific contexts.
+- When you search with a term similar to previous searches, snippets you've selected before will be marked with a star (★) and appear higher in results.
+- The system is smart enough to only boost results when your current search is contextually relevant to your history.
 
-### 📊 How It Works
+### ✨ Smart Single Result (Optional)
 
-1. The extension tracks which snippets you select with specific search queries
-2. When you search again using the same or similar terms, the system recognizes the context
-3. Snippets you've selected before in similar contexts get a relevance boost
-4. The algorithm uses both exact matching and fuzzy matching with gradual relevance scoring
-5. Your most frequently used snippets for specific search patterns rise to the top
+- **Purpose**: To streamline results when you consistently pick the same snippet for a particular search query.
+- **How it works**: If, for a specific search term, one snippet has been chosen a significantly high percentage of the time (e.g., you've picked "my_ssh_key" 9 out of 10 times when searching "ssh"), the extension can be configured to display *only* that dominant snippet.
+- **Configuration**:
+    - Go to Ulauncher Preferences -> Extensions -> MassCode Snippets.
+    - Find the "Smart Single Result Ratio (0.0-1.0)" setting.
+    - Set a value between 0.0 and 1.0. For example:
+        - `0.0` (Default): Disables the feature.
+        - `0.75`: If a snippet accounts for 75% or more of selections for a query, it will be the sole result.
+        - `0.9`: Requires 90% dominance.
+        - `1.0`: Requires 100% dominance (the snippet was the *only* one ever picked for that query).
+    - This feature requires "Enable Contextual Learning" to be active.
+- **Benefit**: Reduces clutter and speeds up access to your most-used snippets in familiar contexts.
+
+### 📊 How Contextual Features Work
+
+1. The extension tracks which snippets you select with specific search queries (if contextual learning is enabled).
+2. When you search again using the same or similar terms, the system recognizes the context.
+3. Snippets you've selected before in similar contexts get a relevance boost (contextual autocomplete).
+4. If the "Smart Single Result" feature is enabled and its ratio threshold is met for the current query, only the dominant snippet is shown.
+5. The algorithm uses both exact matching and fuzzy matching with gradual relevance scoring.
+6. Your most frequently used snippets for specific search patterns rise to the top.
 
 ### 🎯 Precision Focus
 
 Unlike overly aggressive autocomplete systems that suggest the same items regardless of context, our implementation:
-- Only prioritizes items when truly relevant to your current search
-- Maintains a balance between historical preferences and textual relevance
-- Provides visual indicators (★) so you know when items are being contextually boosted
+- Only prioritizes items when truly relevant to your current search.
+- Maintains a balance between historical preferences and textual relevance.
+- Provides visual indicators (★) so you know when items are being contextually boosted.
 
 ## 🛠️ Installation
 
 To install and try out the **Ulauncher Plugin/Extension MassCode Integration**, follow these steps:
 
 1. Clone this repository or download it as a ZIP file.
-2. In your terminal, navigate to your Ulauncher extensions folder with the following command:
+2. In your terminal, navigate to your Ulauncher extensions folder. The path is typically `~/.local/share/ulauncher/extensions/`. If a `masscode-snippet` subfolder doesn't exist, create it.
    ```bash
+   mkdir -p ~/.local/share/ulauncher/extensions/masscode-snippet/
    cd ~/.local/share/ulauncher/extensions/masscode-snippet/
    ```
-3. Clone this repository or move the downloaded files there:
+3. Clone this repository into the `masscode-snippet` folder or move the downloaded files there:
    ```bash
-   git clone https://github.com/mathe00/ulauncher-extension-masscode-integration.git
+   # If you are inside masscode-snippet folder already:
+   git clone https://github.com/mathe00/ulauncher-extension-masscode-integration.git .
+   # Or, if you downloaded and extracted, copy files here.
    ```
 4. Before restarting Ulauncher, install the required dependencies by running:
    ```bash
-   mkdir -p ~/.local/share/ulauncher/extensions/masscode-snippet/libs
-   pip install -r ~/.local/share/ulauncher/extensions/masscode-snippet/requirements.txt -t ~/.local/share/ulauncher/extensions/masscode-snippet/libs
+   # Ensure you are in the masscode-snippet extension directory
+   # Create a libs folder if it doesn't exist
+   mkdir -p libs
+   pip install -r requirements.txt -t libs/
    ```
 5. Restart **[Ulauncher](https://ulauncher.io)**.
 
-6. **Important:** After installation, it is highly recommended to configure the settings for the extension. Open Ulauncher, navigate to the extensions section, and adjust the preferences for the MassCode plugin/extension. This includes setting the path to your MassCode database and choosing how snippets should be handled (e.g., copy to clipboard, paste directly, etc.).
+6. **Important:** After installation, it is highly recommended to configure the settings for the extension. Open Ulauncher, navigate to the extensions section, and adjust the preferences for the MassCode plugin/extension. This includes setting the path to your MassCode database, enabling contextual learning, and configuring the new "Smart Single Result Ratio".
 
 That's it! The plugin/extension is now installed, and you can start searching your MassCode snippets directly from **[Ulauncher](https://github.com/Ulauncher/Ulauncher)**.
 
@@ -65,22 +87,25 @@ That's it! The plugin/extension is now installed, and you can start searching yo
 
 Here are some examples of how the Ulauncher Plugin/Extension MassCode Integration works:
 
+*(Screenshots would show the extension in action, potentially highlighting the star icon for contextual results and an example of a single smart result if applicable)*
+<!--
 <img src="https://github.com/user-attachments/assets/11c427c6-7472-4177-a515-d30e595d0acd" alt="image" width="500"/>
 <img src="https://github.com/user-attachments/assets/9ae7e59b-cf36-4c51-802a-6512d550649b" alt="image" width="500"/>
-
-Feel free to include your own screenshots to showcase how the plugin/extension works in action!
+-->
+*Feel free to include your own screenshots to showcase how the plugin/extension works in action!*
 
 ## 🧠 Technical Details
 
-For the curious developers out there, our new autocomplete system implements:
+For the curious developers out there, our autocomplete and smart result systems implement:
 
-- Context-specific selection history tracking via a JSON-based storage system
-- Graduated relevance scoring with different thresholds for exact, prefix, and fuzzy matches
-- Optimized performance with limited result counts and efficient matching algorithms
-- Comprehensive error handling and logging for better debugging
-- Type hints and modular code structure for easier maintenance and future expansion
+- Context-specific selection history tracking via a JSON-based storage system.
+- Graduated relevance scoring with different thresholds for exact, prefix, and fuzzy matches.
+- Optional single-result filtering based on a configurable selection dominance ratio.
+- Optimized performance with limited result counts and efficient matching algorithms.
+- Comprehensive error handling and logging for better debugging.
+- Type hints and modular code structure for easier maintenance and future expansion.
 
-The implementation balances user personalization with search precision - ensuring that contextual boosts only occur when meaningful, while maintaining the extension's responsive performance.
+The implementation balances user personalization with search precision - ensuring that contextual boosts and smart filtering only occur when meaningful, while maintaining the extension's responsive performance.
 
 ## ✨ New: Ulauncher Plugin/Extension Text Tools
 
