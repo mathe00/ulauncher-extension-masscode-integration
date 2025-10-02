@@ -1,6 +1,6 @@
 # 📄 Ulauncher Plugin/Extension MassCode Integration
 
-> **🆕 Updated 2025-10-02: Now fully compatible with MassCode V4+ (SQLite) while maintaining V3 (JSON) support!**
+> **🆕 Updated 2025-10-02: Now fully compatible with [MassCode V4.0.0](https://github.com/massCodeIO/massCode/releases/tag/v4.0.0) (SQLite) while maintaining V3 (JSON) support!**
 
 👋 **Welcome to the Ulauncher Plugin/Extension MassCode Integration repository!**
 
