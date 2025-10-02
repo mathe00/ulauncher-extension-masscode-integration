@@ -1,5 +1,7 @@
 # 📄 Ulauncher Plugin/Extension MassCode Integration
 
+> **🆕 Updated 2025-10-02: Now fully compatible with MassCode V4+ (SQLite) while maintaining V3 (JSON) support!**
+
 👋 **Welcome to the Ulauncher Plugin/Extension MassCode Integration repository!**
 
 This plugin/extension allows you to easily access your **[MassCode](https://masscode.io) snippets** directly from **[Ulauncher](https://ulauncher.io)**. No need to manually open MassCode or browse through folders to find your snippets anymore. Just type the snippet name or part of it in Ulauncher, and boom – access it instantly! 🚀
