@@ -38,6 +38,18 @@ We've rolled out updates to enhance your productivity:
     - This feature requires "Enable Contextual Learning" to be active.
 - **Benefit**: Reduces clutter and speeds up access to your most-used snippets in familiar contexts.
 
+### 🗄️ MassCode V4+ Support
+
+- **Full SQLite Support**: The extension now supports both MassCode V3 (JSON) and V4+ (SQLite) database formats.
+- **Automatic Version Detection**: Choose your MassCode version in the extension preferences to ensure proper database format handling.
+- **Seamless Migration**: When you upgrade to MassCode V4+, the application automatically migrates your JSON data to SQLite format - no manual intervention required from the extension.
+- **Configuration**:
+    - Go to Ulauncher Preferences -> Extensions -> MassCode Snippets.
+    - Select "MassCode Version" and choose between:
+        - "V3 or earlier (JSON file)" - for older MassCode installations using db.json
+        - "V4+ (SQLite database)" - for newer MassCode installations using massCode.db
+- **Benefits**: Stay current with the latest MassCode features while maintaining compatibility with older installations.
+
 ### 📊 How Contextual Features Work
 
 1. The extension tracks which snippets you select with specific search queries (if contextual learning is enabled).
@@ -79,7 +91,11 @@ To install and try out the **Ulauncher Plugin/Extension MassCode Integration**, 
    ```
 5. Restart **[Ulauncher](https://ulauncher.io)**.
 
-6. **Important:** After installation, it is highly recommended to configure the settings for the extension. Open Ulauncher, navigate to the extensions section, and adjust the preferences for the MassCode plugin/extension. This includes setting the path to your MassCode database, enabling contextual learning, and configuring the new "Smart Single Result Ratio".
+6. **Important:** After installation, it is highly recommended to configure the settings for the extension. Open Ulauncher, navigate to the extensions section, and adjust the preferences for the MassCode plugin/extension. This includes:
+   - Setting the path to your MassCode database (db.json for V3, massCode.db for V4+)
+   - Selecting your MassCode version (V3/earlier uses JSON, V4+ uses SQLite)
+   - Enabling contextual learning
+   - Configuring the "Smart Single Result Ratio"
 
 That's it! The plugin/extension is now installed, and you can start searching your MassCode snippets directly from **[Ulauncher](https://github.com/Ulauncher/Ulauncher)**.
 

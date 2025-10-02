@@ -19,7 +19,7 @@
       "id": "mc_db_path",
       "type": "input",
       "name": "MassCode DB Path",
-      "description": "Path to your MassCode database file (db.json).",
+      "description": "Path to your MassCode database file. For V3 or earlier: db.json. For V4+: massCode.db",
       "default_value": "~/massCode/db.json"
     },
     {
@@ -49,6 +49,17 @@
       "name": "Smart Single Result Ratio (0.0-1.0)",
       "description": "If a snippet's selection count for a query exceeds this ratio (e.g., 0.9 for 90%) of total selections for that query, show only that snippet. Set to 0 or an invalid value to disable. Example: 0.75",
       "default_value": "0.0"
+    },
+    {
+      "id": "masscode_version",
+      "type": "select",
+      "name": "MassCode Version",
+      "description": "Select your MassCode version. V3 and earlier use JSON files (db.json). V4+ use SQLite databases (massCode.db). When upgrading to V4+, MassCode automatically migrates your JSON data to SQLite format.",
+      "default_value": "v3",
+      "options": [
+        {"value": "v3", "text": "V3 or earlier (JSON file)"},
+        {"value": "v4", "text": "V4+ (SQLite database)"}
+      ]
     }
   ]
 }

@@ -11,6 +11,7 @@ import os
 import sys
 import json
 import logging
+import sqlite3
 import time
 from typing import List, Dict, Any, Union, Optional, Tuple
 
@@ -82,8 +83,59 @@ class MassCodeExtension(Extension):
                 )
 
     def load_snippets(self, db_path: str) -> List[Dict[str, Any]]:
+        """
+        Load snippets from MassCode database based on version preference.
+
+        This method routes to the appropriate loader based on the user's MassCode version
+        preference. For V3 and earlier, it uses JSON format. For V4+, it uses SQLite.
+
+        Args:
+            db_path (str): Path to the MassCode database file (db.json for V3, massCode.db for V4+)
+
+        Returns:
+            List[Dict[str, Any]]: List of snippet dictionaries in the format expected by the search logic
+
+        Note:
+            The return format is normalized to match the existing JSON structure for seamless
+            compatibility with the rest of the extension's search and display logic.
+        """
+        masscode_version = self.preferences.get("masscode_version", "v3")
+
+        if masscode_version == "v4":
+            return self.load_snippets_sqlite(db_path)
+        else:
+            return self.load_snippets_json(db_path)
+
+    def load_snippets_json(self, db_path: str) -> List[Dict[str, Any]]:
+        """
+        Load snippets from MassCode V3 JSON format.
+
+        This is the original loader for JSON-based databases used in MassCode V3 and earlier.
+        Maintains backward compatibility with existing installations.
+
+        Args:
+            db_path (str): Path to the MassCode JSON database file (typically db.json)
+
+        Returns:
+            List[Dict[str, Any]]: List of snippet dictionaries in V3 format
+
+        Raises:
+            FileNotFoundError: When the specified JSON file doesn't exist
+            json.JSONDecodeError: When the JSON file is malformed
+        """
         expanded_path = os.path.expanduser(db_path)
-        logger.debug(f"Loading snippets from: {expanded_path}")
+        logger.debug(f"Loading snippets from JSON: {expanded_path}")
+
+        # Check if file exists
+        if not os.path.exists(expanded_path):
+            logger.error(f"JSON DB file not found: {expanded_path}")
+            return []
+
+        # Check if it's actually a SQLite file (wrong version selected)
+        if self._is_sqlite_file(expanded_path):
+            logger.warning(f"File appears to be SQLite but V3/earlier selected: {expanded_path}")
+            return []
+
         try:
             with open(expanded_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -92,17 +144,185 @@ class MassCodeExtension(Extension):
                 for s in data.get("snippets", [])
                 if not s.get("isDeleted", False)
             ]
-            logger.info(f"{len(snippets)} active snippets loaded.")
+            logger.info(f"{len(snippets)} active snippets loaded from JSON.")
             return snippets
-        except FileNotFoundError:
-            logger.error(f"DB file not found: {expanded_path}")
-            return []
         except json.JSONDecodeError:
             logger.error(f"Invalid JSON: {expanded_path}")
             return []
         except Exception as e:
-            logger.error(f"Error loading snippets: {e}", exc_info=True)
+            logger.error(f"Error loading JSON snippets: {e}", exc_info=True)
             return []
+
+    def load_snippets_sqlite(self, db_path: str) -> List[Dict[str, Any]]:
+        """
+        Load snippets from MassCode V4+ SQLite database.
+
+        This loader handles the new SQLite-based database format introduced in MassCode V4+.
+        It performs the necessary JOIN operations to reconstruct snippet data in a format
+        compatible with the existing search logic.
+
+        Args:
+            db_path (str): Path to the MassCode SQLite database file (typically massCode.db)
+
+        Returns:
+            List[Dict[str, Any]]: List of snippet dictionaries normalized to V3 format for compatibility
+
+        Raises:
+            sqlite3.Error: When there are database connectivity or query issues
+            FileNotFoundError: When the specified database file doesn't exist
+
+        Note:
+            The method transforms the relational SQLite data into the flat structure expected
+            by the existing search and display logic, ensuring seamless compatibility.
+        """
+        expanded_path = os.path.expanduser(db_path)
+        logger.debug(f"Loading snippets from SQLite: {expanded_path}")
+
+        # Validate database file exists
+        if not os.path.exists(expanded_path):
+            logger.error(f"SQLite DB file not found: {expanded_path}")
+            return []
+
+        # Check if it's actually a JSON file (wrong version selected)
+        if self._is_json_file(expanded_path):
+            logger.warning(f"File appears to be JSON but V4+ selected: {expanded_path}")
+            return []
+
+        try:
+            with sqlite3.connect(expanded_path) as conn:
+                # Enable row factory for named access
+                conn.row_factory = sqlite3.Row
+
+                # Query to get all active snippets with their content fragments
+                # Joins folders, snippets, and snippet_contents tables
+                query = """
+                SELECT
+                    s.id, s.name, s.description, s.folderId, s.isDeleted, s.isFavorites,
+                    s.createdAt, s.updatedAt,
+                    f.name as folder_name,
+                    sc.label as content_label, sc.value as content_value, sc.language
+                FROM snippets s
+                LEFT JOIN folders f ON s.folderId = f.id
+                LEFT JOIN snippet_contents sc ON s.id = sc.snippetId
+                WHERE s.isDeleted = 0
+                ORDER BY s.id, sc.label
+                """
+
+                cursor = conn.execute(query)
+                rows = cursor.fetchall()
+
+                if not rows:
+                    logger.info("No active snippets found in SQLite database.")
+                    return []
+
+                # Group content fragments by snippet
+                snippets_dict = {}
+                for row in rows:
+                    snippet_id = row['id']
+
+                    if snippet_id not in snippets_dict:
+                        # Create new snippet entry
+                        snippets_dict[snippet_id] = {
+                            'id': snippet_id,
+                            'name': row['name'] or 'Unnamed',
+                            'description': row['description'],
+                            'folderId': row['folderId'],
+                            'isDeleted': bool(row['isDeleted']),
+                            'isFavorites': bool(row['isFavorites']),
+                            'createdAt': row['createdAt'],
+                            'updatedAt': row['updatedAt'],
+                            'folder_name': row['folder_name'],
+                            'content': []  # Will hold content fragments
+                        }
+
+                    # Add content fragment if it exists
+                    if row['content_value']:
+                        snippets_dict[snippet_id]['content'].append({
+                            'label': row['content_label'] or '',
+                            'value': row['content_value'],
+                            'language': row['language'] or 'plaintext'
+                        })
+
+                # Convert to list format and normalize content
+                snippets = []
+                for snippet_data in snippets_dict.values():
+                    # Normalize content to match V3 format (string or array)
+                    content = snippet_data['content']
+                    if not content:
+                        # No content fragments
+                        normalized_content = ""
+                    elif len(content) == 1:
+                        # Single fragment - use as string
+                        normalized_content = content[0]['value']
+                    else:
+                        # Multiple fragments - keep as array
+                        normalized_content = content
+
+                    # Create V3-compatible snippet structure
+                    snippet = {
+                        'name': snippet_data['name'],
+                        'content': normalized_content,
+                        'isDeleted': snippet_data['isDeleted']
+                    }
+
+                    # Add V4-specific metadata as extensions for future use
+                    if snippet_data['description']:
+                        snippet['_description'] = snippet_data['description']
+                    if snippet_data['isFavorites']:
+                        snippet['_isFavorites'] = True
+                    if snippet_data['folder_name']:
+                        snippet['_folder'] = snippet_data['folder_name']
+
+                    snippets.append(snippet)
+
+                logger.info(f"{len(snippets)} active snippets loaded from SQLite.")
+                return snippets
+
+        except sqlite3.Error as e:
+            logger.error(f"SQLite error loading snippets: {e}", exc_info=True)
+            return []
+        except Exception as e:
+            logger.error(f"Unexpected error loading SQLite snippets: {e}", exc_info=True)
+            return []
+
+    def _is_sqlite_file(self, file_path: str) -> bool:
+        """
+        Check if a file is a SQLite database by reading the first few bytes.
+
+        SQLite files start with the magic bytes "SQLite format 3\000".
+
+        Args:
+            file_path (str): Path to the file to check
+
+        Returns:
+            bool: True if the file appears to be a SQLite database, False otherwise
+        """
+        try:
+            with open(file_path, "rb") as f:
+                header = f.read(16)
+                # SQLite format 3 magic bytes
+                return header.startswith(b"SQLite format 3")
+        except (IOError, OSError):
+            return False
+
+    def _is_json_file(self, file_path: str) -> bool:
+        """
+        Check if a file is a JSON file by reading the first few bytes.
+
+        JSON files typically start with '{' or '['.
+
+        Args:
+            file_path (str): Path to the file to check
+
+        Returns:
+            bool: True if the file appears to be a JSON file, False otherwise
+        """
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                first_char = f.read(1)
+                return first_char in ['{', '[']
+        except (IOError, OSError, UnicodeDecodeError):
+            return False
 
     def load_context_history(self) -> Dict[str, Dict[str, int]]:
         if not os.path.exists(HISTORY_FILE):
@@ -212,9 +432,39 @@ class KeywordQueryEventListener(EventListener):
 
             snippets = extension.load_snippets(db_path=db_path)
             if not snippets:
-                return self._show_message(
-                    "Loading error", "Check db.json.", "images/icon-error.png"
-                )
+                masscode_version = extension.preferences.get("masscode_version", "v3")
+                expanded_path = os.path.expanduser(db_path) if db_path else ""
+
+                # Detect file type for better error messages
+                if expanded_path and os.path.exists(expanded_path):
+                    if masscode_version == "v4" and self._is_json_file(expanded_path):
+                        return self._show_message(
+                            "Version Mismatch Error",
+                            f"You selected V4+ but the file appears to be JSON format. Try selecting 'V3 or earlier' instead.",
+                            "images/icon-warning.png"
+                        )
+                    elif masscode_version != "v4" and self._is_sqlite_file(expanded_path):
+                        return self._show_message(
+                            "Version Mismatch Error",
+                            f"You selected V3/earlier but the file appears to be SQLite format. Try selecting 'V4+' instead.",
+                            "images/icon-warning.png"
+                        )
+
+                # Default error messages based on version
+                if masscode_version == "v4":
+                    expected_path = db_path or "~/massCode/massCode.db"
+                    return self._show_message(
+                        "SQLite Database Error",
+                        f"Check that '{os.path.expanduser(expected_path)}' exists and MassCode V4+ is installed.",
+                        "images/icon-error.png"
+                    )
+                else:
+                    expected_path = db_path or "~/massCode/db.json"
+                    return self._show_message(
+                        "JSON Database Error",
+                        f"Check that '{os.path.expanduser(expected_path)}' exists and MassCode V3 or earlier is installed.",
+                        "images/icon-error.png"
+                    )
 
             context_history = {}
             relevant_contexts = {}
@@ -494,6 +744,7 @@ class ItemEnterEventListener(EventListener):
                 exc_info=True,
             )
         return None
+
 
 # ==============================================================================
 # MAIN ENTRY POINT
