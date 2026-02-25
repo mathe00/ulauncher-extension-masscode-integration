@@ -11,6 +11,7 @@ This plugin/extension allows you to easily access your **[MassCode](https://mass
 - 🔍 **Quick snippet search**: Type a keyword in Ulauncher to search through your MassCode snippets.
 - 📂 **Choose database path**: You can specify the path to the JSON file containing your MassCode snippets.
 - 📄 **Snippet preview**: View the content of your snippets directly in Ulauncher.
+- 🧩 **Multi-fragment support**: Select individual fragments from multi-fragment snippets instead of pasting everything together.
 - 🌟 **Personalized contextual autocomplete**: The extension intelligently prioritizes snippets based on your usage patterns.
 - ✨ **NEW! Smart Single Result**: Optionally, if a snippet overwhelmingly dominates your selections for a specific query, the extension can show only that snippet.
 - ⏩ **Quick access**: Choose between copying the snippet to your clipboard or pasting it directly (okay, the pasting option isn't functional yet, but one day... maybe?).
@@ -18,6 +19,16 @@ This plugin/extension allows you to easily access your **[MassCode](https://mass
 ## 🆕 What's New (Recent Update)
 
 We've rolled out updates to enhance your productivity:
+
+### 🧩 Multi-Fragment Support (Per-Fragment Selection)
+
+- **Individual Fragment Selection**: Multi-fragment snippets are now expanded into separate selectable entries in Ulauncher. Instead of pasting all fragments concatenated together, you can now choose exactly which fragment you need.
+- **How it works**: When you search for a snippet with multiple fragments (e.g., "poulet" with fragments "Fragment 1", "Fragment 2", "Connection"), each fragment appears as a separate result:
+  - `poulet [Fragment 1]` → `11111111111`
+  - `poulet [Fragment 2]` → `22222222222`
+  - `poulet [Connection]` → `conn = connect()`
+- **Contextual Learning per Fragment**: The extension tracks which fragments you use most frequently and prioritizes them in future searches. If you always use "Fragment 2" for a specific query, it will appear at the top with a star (★) indicator.
+- **Implementation**: This addresses issue #2 - special thanks to @Jopp-gh for the suggestion!
 
 ### 🌟 Personalized Contextual Autocomplete
 
