@@ -142,7 +142,6 @@ def calculate_relevance(normalized_query: str, hist_query: str) -> float:
 
 def get_context_score(
     snippet_name: str,
-    fragment_label: str,
     relevant_contexts: Dict[str, Dict[str, Any]],
 ) -> int:
     """
@@ -150,24 +149,17 @@ def get_context_score(
 
     Args:
         snippet_name (str): The name of the snippet
-        fragment_label (str): The fragment label (if applicable)
         relevant_contexts (Dict[str, Dict[str, Any]]): Relevant contexts from history
 
     Returns:
-        int: Context score (0-based) indicating how often this snippet
-             was selected for similar queries
+        int: Context score indicating how often this snippet was selected
     """
     context_score = 0
-    for context_query, context_data in relevant_contexts.items():
-        # Check if either the snippet name or snippet name with fragment label exists in history
-        snippet_key = snippet_name
-        if fragment_label:
-            snippet_key = f"{snippet_name} [{fragment_label}]"
-
-        if snippet_key in context_data["snippets"]:
-            context_score = max(
-                context_score,
-                context_data["snippets"][snippet_key] * context_data["relevance"] * 100,
+    for context_data in relevant_contexts.values():
+        if snippet_name in context_data["snippets"]:
+            score = (
+                context_data["snippets"][snippet_name] * context_data["relevance"] * 100
             )
+            context_score = max(context_score, int(score))
 
     return context_score

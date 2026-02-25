@@ -67,9 +67,8 @@ def create_result_items(
     """
     items: List[ExtensionResultItem] = []
 
-    for match_index, match in enumerate(matches[:max_results]):
+    for match in matches[:max_results]:
         snippet_name = match.get("name", "")
-        fragment_label = match.get("_fragment_label", "")
         content_text = match.get("content", "")
         context_score = match.get("context_score", 0)
 
@@ -84,19 +83,12 @@ def create_result_items(
             else description or "Empty snippet"
         )
 
-        # Build display name with fragment label if present
-        # Format: "Snippet Name [Fragment Label]" or just "Snippet Name"
-        display_name = snippet_name
-        if fragment_label:
-            display_name = f"{snippet_name} [{fragment_label}]"
-
         # Create actions
         copy_action = CopyToClipboardAction(text=content_text)
         history_action_data = {
             "action": "record_history",
-            "query": match.get("query", ""),  # Original query if available
+            "query": match.get("query", ""),
             "snippet_name": snippet_name,
-            "fragment_label": fragment_label,  # Include fragment label in history
         }
         history_trigger_action = ExtensionCustomAction(
             data=history_action_data, keep_app_open=False
@@ -107,7 +99,7 @@ def create_result_items(
         items.append(
             ExtensionResultItem(
                 icon=icon,
-                name=f"{prefix}{display_name}",
+                name=f"{prefix}{snippet_name}",
                 description=description,
                 on_enter=combined_action,
             )

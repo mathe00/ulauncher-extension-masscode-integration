@@ -197,45 +197,33 @@ class KeywordQueryEventListener(EventListener):
     ) -> List[dict]:
         """
         Match snippets against query using fuzzy matching and context scoring.
-
-        Args:
-            snippets (List[dict]): List of snippets to match
-            query (str): Search query
-            relevant_contexts (dict): Relevant contexts from history
-            contextual_learning_enabled (bool): Whether contextual learning is enabled
-
-        Returns:
-            List[dict]: List of matched snippets with scores
         """
         matches = []
         for snippet in snippets:
             name = snippet.get("name", "Unnamed")
-            fragment_label = snippet.get("_fragment_label", "")
             content_data = snippet.get("content", "")
             content_text = (
                 content_data if isinstance(content_data, str) else str(content_data)
             )
 
-            # Build searchable text: name + fragment label (if present)
-            searchable_name = name
-            if fragment_label:
-                searchable_name = f"{name} {fragment_label}"
-
             # Calculate fuzzy score
             combined_score = calculate_fuzzy_score(
                 query=query,
-                searchable_name=searchable_name,
+                searchable_name=name,
                 content_text=content_text,
             )
 
-            # Calculate context score
+            # Calculate context score (simple lookup by name)
             context_score = 0
             if contextual_learning_enabled and relevant_contexts:
-                context_score = get_context_score(
-                    snippet_name=name,
-                    fragment_label=fragment_label,
-                    relevant_contexts=relevant_contexts,
-                )
+                for context_data in relevant_contexts.values():
+                    if name in context_data["snippets"]:
+                        score = (
+                            context_data["snippets"][name]
+                            * context_data["relevance"]
+                            * 100
+                        )
+                        context_score = max(context_score, int(score))
 
             # Add match if score meets threshold or no query
             if combined_score >= FUZZY_SCORE_THRESHOLD or not query:
@@ -243,8 +231,7 @@ class KeywordQueryEventListener(EventListener):
                     {
                         "name": name,
                         "content": content_text,
-                        "query": query,  # Store for history recording
-                        "_fragment_label": fragment_label,
+                        "query": query,
                         "fuzzy_score": combined_score,
                         "context_score": context_score,
                     }
@@ -259,57 +246,29 @@ class KeywordQueryEventListener(EventListener):
         context_history: dict,
         smart_ratio_threshold: float,
     ) -> List[dict]:
-        """
-        Apply smart single result filtering to matches.
-
-        If a snippet has been selected for a query with high frequency,
-        returns only that snippet as the result.
-
-        Args:
-            matches (List[dict]): List of matched snippets
-            query (str): The search query
-            context_history (dict): Context history from learning
-            smart_ratio_threshold (float): Threshold for single result dominance
-
-        Returns:
-            List[dict]: Filtered matches (possibly single result)
-        """
+        """Apply smart single result filtering to matches."""
         normalized_query = query.lower().strip()
         query_specific_history = context_history[normalized_query]
         total_selections_for_query = sum(query_specific_history.values())
 
         if total_selections_for_query > 0:
-            for match_item in matches:  # Iterate through all matches
-                snippet_name_in_match = match_item.get("name")
-                fragment_label_in_match = match_item.get("_fragment_label", "")
+            for match_item in matches:
+                snippet_name = match_item.get("name")
 
-                # Build the history key for this match
-                history_key = snippet_name_in_match
-                if fragment_label_in_match:
-                    history_key = f"{snippet_name_in_match} [{fragment_label_in_match}]"
-
-                if history_key in query_specific_history:
-                    snippet_selection_count = query_specific_history[history_key]
+                if snippet_name in query_specific_history:
+                    snippet_selection_count = query_specific_history[snippet_name]
                     selection_ratio = (
                         snippet_selection_count / total_selections_for_query
                     )
 
-                    logger.debug(
-                        f"Smart Single Result Check: Snippet='{history_key}', "
-                        f"Query='{normalized_query}', "
-                        f"Count={snippet_selection_count}, Total={total_selections_for_query}, "
-                        f"Ratio={selection_ratio:.2f}, Threshold={smart_ratio_threshold:.2f}"
-                    )
-
                     if selection_ratio >= smart_ratio_threshold:
                         logger.info(
-                            f"Smart Single Result triggered for snippet '{history_key}' "
-                            f"with ratio {selection_ratio:.2f} >= {smart_ratio_threshold:.2f}. "
-                            f"Showing only this result."
+                            f"Smart Single Result: '{snippet_name}' "
+                            f"ratio={selection_ratio:.2f} >= threshold={smart_ratio_threshold:.2f}"
                         )
-                        return [match_item]  # Return only this one
+                        return [match_item]
 
-        return matches  # No dominant snippet found
+        return matches
 
 
 class ItemEnterEventListener(EventListener):
@@ -337,7 +296,6 @@ class ItemEnterEventListener(EventListener):
         try:
             query = data.get("query")
             snippet_name = data.get("snippet_name")
-            fragment_label = data.get("fragment_label", "")
 
             if query is None or snippet_name is None:
                 logger.error(
@@ -348,13 +306,12 @@ class ItemEnterEventListener(EventListener):
             update_context_history(
                 query=query,
                 snippet_name=snippet_name,
-                fragment_label=fragment_label,
                 enable_contextual_learning=extension.preferences.get(
                     "enable_contextual_learning"
                 )
                 == "true",
             )
-            logger.debug("History update (triggered by ItemEnterEvent) completed.")
+            logger.debug("History update completed.")
 
         except Exception as e:
             logger.error(

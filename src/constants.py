@@ -7,7 +7,8 @@ This module defines shared constants used throughout the extension.
 import os
 
 # Extension directory and file paths
-EXTENSION_DIR = os.path.dirname(os.path.abspath(__file__))
+# Go up one level from src/ to get extension root
+EXTENSION_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HISTORY_FILE = os.path.join(EXTENSION_DIR, "context_history.json")
 
 # Search and display thresholds
