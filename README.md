@@ -116,11 +116,12 @@ That's it! The plugin/extension is now installed, and you can start searching yo
 
 Here are some examples of how the Ulauncher Plugin/Extension MassCode Integration works:
 
-*(Screenshots would show the extension in action, potentially highlighting the star icon for contextual results and an example of a single smart result if applicable)*
-<!--
-<img src="https://github.com/user-attachments/assets/11c427c6-7472-4177-a515-d30e595d0acd" alt="image" width="500"/>
-<img src="https://github.com/user-attachments/assets/9ae7e59b-cf36-4c51-802a-6512d550649b" alt="image" width="500"/>
--->
+<img src="images/screenshot-search-results.png" alt="Snippet search results" width="600"/>
+
+<img src="images/screenshot-fragment-selection.png" alt="Multi-fragment selection" width="600"/>
+
+<img src="images/screenshot-contextual-learning.png" alt="Contextual learning" width="600"/>
+
 *Feel free to include your own screenshots to showcase how the plugin/extension works in action!*
 
 ## 🧠 Technical Details
