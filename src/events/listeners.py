@@ -21,7 +21,6 @@ from ..learning.contextual_history import load_context_history, update_context_h
 from ..utils.fuzzy_search import (
     find_relevant_contexts,
     calculate_fuzzy_score,
-    get_context_score,
 )
 from ..results.builder import create_error_message, create_result_items
 from ..fragments.fragment_utils import expand_snippet_fragments
