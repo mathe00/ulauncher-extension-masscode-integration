@@ -123,10 +123,10 @@ def update_context_history(
         logger.warning("Attempting to update history with empty query or snippet name.")
         return
 
-    # Create the history key: include fragment label if present
+    # Create the history key
+    # Note: snippet_name already includes fragment label if present (e.g., "poulet [Fragment 1]")
+    # We use it directly without adding fragment_label again
     history_key = snippet_name
-    if fragment_label:
-        history_key = f"{snippet_name} [{fragment_label}]"
 
     logger.info(
         f"Updating History: Query='{normalized_query}', Snippet='{history_key}'"

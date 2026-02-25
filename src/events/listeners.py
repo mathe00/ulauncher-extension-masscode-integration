@@ -24,6 +24,7 @@ from ..utils.fuzzy_search import (
     get_context_score,
 )
 from ..results.builder import create_error_message, create_result_items
+from ..fragments.fragment_utils import expand_snippet_fragments
 from ..constants import FUZZY_SCORE_THRESHOLD, MAX_RESULTS
 
 
@@ -197,29 +198,42 @@ class KeywordQueryEventListener(EventListener):
     ) -> List[dict]:
         """
         Match snippets against query using fuzzy matching and context scoring.
+        Expands multi-fragment snippets into separate selectable entries.
         """
         matches = []
-        for snippet in snippets:
-            name = snippet.get("name", "Unnamed")
-            content_data = snippet.get("content", "")
-            content_text = (
-                content_data if isinstance(content_data, str) else str(content_data)
-            )
 
-            # Calculate fuzzy score
+        # First, expand all snippets (multi-fragment snippets become multiple entries)
+        expanded_snippets = []
+        for snippet in snippets:
+            expanded = expand_snippet_fragments(snippet)
+            expanded_snippets.extend(expanded)
+
+        for snippet in expanded_snippets:
+            name = snippet.get("name", "Unnamed")
+            fragment_label = snippet.get("_fragment_label", "")
+            content_text = snippet.get("content", "")
+
+            # Build display name: include fragment label if present
+            # e.g., "poulet [Fragment 1]" instead of just "poulet"
+            display_name = name
+            if fragment_label:
+                display_name = f"{name} [{fragment_label}]"
+
+            # Calculate fuzzy score using the display name (includes fragment label)
             combined_score = calculate_fuzzy_score(
                 query=query,
-                searchable_name=name,
+                searchable_name=display_name,
                 content_text=content_text,
             )
 
-            # Calculate context score (simple lookup by name)
+            # Calculate context score using the display name (includes fragment label)
+            # This allows learning per fragment: "poulet [Fragment 1]" vs "poulet [Fragment 2]"
             context_score = 0
             if contextual_learning_enabled and relevant_contexts:
                 for context_data in relevant_contexts.values():
-                    if name in context_data["snippets"]:
+                    if display_name in context_data["snippets"]:
                         score = (
-                            context_data["snippets"][name]
+                            context_data["snippets"][display_name]
                             * context_data["relevance"]
                             * 100
                         )
@@ -229,8 +243,9 @@ class KeywordQueryEventListener(EventListener):
             if combined_score >= FUZZY_SCORE_THRESHOLD or not query:
                 matches.append(
                     {
-                        "name": name,
+                        "name": display_name,  # Full name with fragment label
                         "content": content_text,
+                        "fragment_label": fragment_label,  # Keep for history
                         "query": query,
                         "fuzzy_score": combined_score,
                         "context_score": context_score,
@@ -296,6 +311,7 @@ class ItemEnterEventListener(EventListener):
         try:
             query = data.get("query")
             snippet_name = data.get("snippet_name")
+            fragment_label = data.get("fragment_label", "")
 
             if query is None or snippet_name is None:
                 logger.error(
@@ -306,6 +322,7 @@ class ItemEnterEventListener(EventListener):
             update_context_history(
                 query=query,
                 snippet_name=snippet_name,
+                fragment_label=fragment_label,
                 enable_contextual_learning=extension.preferences.get(
                     "enable_contextual_learning"
                 )

@@ -85,10 +85,17 @@ def create_result_items(
 
         # Create actions
         copy_action = CopyToClipboardAction(text=content_text)
+
+        # Include fragment_label in history data for per-fragment learning
+        # The snippet_name already includes the fragment label (e.g., "poulet [Fragment 1]")
+        # We extract the base name and fragment label separately for the history
+        fragment_label = match.get("fragment_label", "")
+
         history_action_data = {
             "action": "record_history",
             "query": match.get("query", ""),
-            "snippet_name": snippet_name,
+            "snippet_name": snippet_name,  # Full name: "poulet [Fragment 1]"
+            "fragment_label": fragment_label,  # Just the label: "Fragment 1"
         }
         history_trigger_action = ExtensionCustomAction(
             data=history_action_data, keep_app_open=False

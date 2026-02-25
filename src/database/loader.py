@@ -125,25 +125,26 @@ def load_snippets_sqlite(db_path: str) -> List[Dict[str, Any]]:
                         }
                     )
 
-            # Convert to list format - JOIN fragments like the working main.py
+            # Convert to list format - PRESERVE fragment structure for multi-fragment support
             snippets = []
             for snippet_data in snippets_dict.values():
                 content = snippet_data["content"]
 
                 if not content:
-                    # No content fragments
-                    content_text = ""
+                    # No content fragments - use empty string
+                    content_value = ""
                 elif len(content) == 1:
-                    # Single fragment - use as string
-                    content_text = content[0]["value"]
+                    # Single fragment - use as string for backward compatibility
+                    content_value = content[0]["value"]
                 else:
-                    # Multiple fragments - JOIN them with newlines
-                    content_text = "\n".join(f.get("value", "") for f in content)
+                    # Multiple fragments - PRESERVE as list for fragment-level selection
+                    # Each fragment will be expanded later into separate selectable items
+                    content_value = content
 
                 # Create V3-compatible snippet structure
                 snippet = {
                     "name": snippet_data["name"],
-                    "content": content_text,
+                    "content": content_value,
                     "isDeleted": snippet_data["isDeleted"],
                 }
 
