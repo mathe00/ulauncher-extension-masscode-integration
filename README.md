@@ -23,10 +23,10 @@ We've rolled out updates to enhance your productivity:
 ### 🧩 Multi-Fragment Support (Per-Fragment Selection)
 
 - **Individual Fragment Selection**: Multi-fragment snippets are now expanded into separate selectable entries in Ulauncher. Instead of pasting all fragments concatenated together, you can now choose exactly which fragment you need.
-- **How it works**: When you search for a snippet with multiple fragments (e.g., "poulet" with fragments "Fragment 1", "Fragment 2", "Connection"), each fragment appears as a separate result:
-  - `poulet [Fragment 1]` → `11111111111`
-  - `poulet [Fragment 2]` → `22222222222`
-  - `poulet [Connection]` → `conn = connect()`
+- **How it works**: When you search for a snippet with multiple fragments (e.g., "db-connection" with fragments "Config", "Connect", "Close"), each fragment appears as a separate result:
+  - `db-connection [Config]` → `host = "localhost"`
+  - `db-connection [Connect]` → `conn = create_connection(host)`
+  - `db-connection [Close]` → `conn.close()`
 - **Contextual Learning per Fragment**: The extension tracks which fragments you use most frequently and prioritizes them in future searches. If you always use "Fragment 2" for a specific query, it will appear at the top with a star (★) indicator.
 - **Implementation**: This addresses issue #2 - special thanks to @Jopp-gh for the suggestion!
 
