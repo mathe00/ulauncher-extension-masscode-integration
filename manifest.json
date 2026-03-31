@@ -19,8 +19,8 @@
       "id": "mc_db_path",
       "type": "input",
       "name": "MassCode DB Path",
-      "description": "Path to your MassCode database file. For V3 or earlier: db.json. For V4+: massCode.db",
-      "default_value": "~/massCode/db.json"
+      "description": "Path to your MassCode database file or vault directory. For V3 or earlier: db.json. For V4+: massCode.db. For V5+: markdown-vault/ directory.",
+      "default_value": "~/massCode/markdown-vault"
     },
     {
       "id": "copy_paste_mode",
@@ -54,11 +54,12 @@
       "id": "masscode_version",
       "type": "select",
       "name": "MassCode Version",
-      "description": "Select your MassCode version. V3 and earlier use JSON files (db.json). V4+ use SQLite databases (massCode.db). When upgrading to V4+, MassCode automatically migrates your JSON data to SQLite format.",
-      "default_value": "v3",
+      "description": "Select your MassCode version. V3 and earlier use JSON files (db.json). V4+ use SQLite databases (massCode.db). V5+ use Markdown Vault (markdown-vault/ directory).",
+      "default_value": "v5",
       "options": [
-        {"value": "v3", "text": "V3 or earlier (JSON file)"},
-        {"value": "v4", "text": "V4+ (SQLite database)"}
+        {"value": "v5", "text": "V5+ (Markdown Vault directory)"},
+        {"value": "v4", "text": "V4+ (SQLite database)"},
+        {"value": "v3", "text": "V3 or earlier (JSON file)"}
       ]
     }
   ]

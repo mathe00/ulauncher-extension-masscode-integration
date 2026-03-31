@@ -16,7 +16,12 @@ from ulauncher.api.client.EventListener import EventListener
 from ulauncher.api.shared.event import KeywordQueryEvent, ItemEnterEvent
 from ulauncher.api.shared.action.RenderResultListAction import RenderResultListAction
 
-from ..database.loader import load_snippets, is_json_file, is_sqlite_file
+from ..database.loader import (
+    load_snippets,
+    is_json_file,
+    is_sqlite_file,
+    is_markdown_vault,
+)
 from ..learning.contextual_history import load_context_history, update_context_history
 from ..utils.fuzzy_search import (
     find_relevant_contexts,
@@ -75,7 +80,7 @@ class KeywordQueryEventListener(EventListener):
             if not db_path:
                 return create_error_message(
                     "Configuration required",
-                    "Set db.json path.",
+                    "Set MassCode DB path or vault directory.",
                     "images/icon-warning.png",
                 )
 
@@ -85,7 +90,31 @@ class KeywordQueryEventListener(EventListener):
             if not snippets:
                 expanded_path = os.path.expanduser(db_path) if db_path else ""
 
-                # Detect file type for better error messages
+                # V5-specific error handling
+                if masscode_version == "v5":
+                    if expanded_path and os.path.exists(expanded_path):
+                        if os.path.isfile(expanded_path):
+                            return create_error_message(
+                                "Vault Path Error",
+                                f"'{expanded_path}' is a file, not a directory. "
+                                "For V5+, set the path to the markdown-vault/ folder.",
+                                "images/icon-warning.png",
+                            )
+                        if not is_markdown_vault(expanded_path):
+                            return create_error_message(
+                                "Invalid Vault",
+                                f"'{expanded_path}' doesn't look like a MassCode vault. "
+                                "Missing '.masscode/state.json'.",
+                                "images/icon-warning.png",
+                            )
+                    return create_error_message(
+                        "Markdown Vault Error",
+                        f"Check that '{os.path.expanduser(db_path or '~/massCode/markdown-vault')}' "
+                        "exists and contains '.masscode/state.json'.",
+                        "images/icon-error.png",
+                    )
+
+                # Detect file type for better error messages (V3/V4)
                 if expanded_path and os.path.exists(expanded_path):
                     if masscode_version == "v4" and is_json_file(expanded_path):
                         return create_error_message(
@@ -100,7 +129,7 @@ class KeywordQueryEventListener(EventListener):
                             "images/icon-warning.png",
                         )
 
-                # Default error messages based on version
+                # Default error messages based on version (V3/V4)
                 if masscode_version == "v4":
                     expected_path = db_path or "~/massCode/massCode.db"
                     return create_error_message(

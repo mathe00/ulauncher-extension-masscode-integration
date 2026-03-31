@@ -19,10 +19,17 @@ MAX_RESULTS = 8
 # MassCode version identifiers
 MASSCODE_V3 = "v3"  # JSON-based (V3 and earlier)
 MASSCODE_V4 = "v4"  # SQLite-based (V4 and later)
+MASSCODE_V5 = "v5"  # Markdown Vault (V5+)
+
+# Markdown Vault internal constants (V5)
+VAULT_META_DIR = ".masscode"  # Metadata directory inside vault
+VAULT_STATE_FILE = "state.json"  # Central snippet index file
+VAULT_FOLDER_META_FILE = ".masscode-folder.yml"  # Per-folder metadata file
 
 # Default preferences
 DEFAULT_DB_PATH_V3 = "~/massCode/db.json"
 DEFAULT_DB_PATH_V4 = "~/massCode/massCode.db"
+DEFAULT_DB_PATH_V5 = "~/massCode/markdown-vault"
 DEFAULT_SMART_RATIO_THRESHOLD = 0.0
 DEFAULT_CONTEXTUAL_LEARNING = True
 DEFAULT_QUERY_DEBOUNCE = 0.05
