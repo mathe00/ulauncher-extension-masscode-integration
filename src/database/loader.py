@@ -23,6 +23,9 @@ from ..constants import (
     VAULT_META_DIR,
     VAULT_STATE_FILE,
     VAULT_FOLDER_META_FILE,
+    VAULT_FOLDER_META_FILE_LEGACY,
+    VAULT_CODE_SPACE,
+    VAULT_KNOWN_SPACES,
 )
 
 logger = logging.getLogger(__name__)
@@ -204,14 +207,93 @@ def is_json_file(file_path: str) -> bool:
 # =============================================================================
 # V5+ Markdown Vault Loader
 # =============================================================================
+#
+# MassCode V5+ uses a "spaces" layout where the vault root contains
+# subdirectories like code/, notes/, math/ — each with its own
+# .masscode/state.json and folder structure.
+#
+# Vault structure (current, massCode >= ~5.x with spaces):
+#   <vault>/
+#     code/                         # "code" space (snippets)
+#       .masscode/
+#         state.json                # Snippet index (filePaths relative to code/)
+#         inbox/                    # Unassigned snippets
+#         trash/                    # Deleted snippets
+#       <FolderName>/
+#         .meta.yaml                # Folder metadata (current format)
+#         <SnippetName>.md          # Snippet files
+#     notes/                        # "notes" space (notes, not snippets)
+#       .masscode/
+#         state.json
+#
+# Legacy vault structure (massCode < 5.x, flat layout):
+#   <vault>/
+#     .masscode/
+#       state.json                  # Snippet index at vault root
+#       inbox/
+#       trash/
+#     <FolderName>/
+#       .masscode-folder.yml        # Old folder metadata filename
+#       <SnippetName>.md
+#
+# We support both layouts for backward compatibility.
+# =============================================================================
+
+
+def resolve_vault_space_dir(vault_path: str) -> str:
+    """
+    Detect the vault layout and return the correct space directory path.
+
+    MassCode V5+ organizes vaults into "spaces" (code/, notes/, math/).
+    The snippet data lives in the "code" space. Older vaults have a flat
+    layout with .masscode/ directly at the vault root.
+
+    Detection order (matching massCode's own resolveCodeVaultPath logic):
+      1. If <vault>/code/.masscode/state.json exists → spaces layout, return <vault>/code/
+      2. If <vault>/.masscode/state.json exists → legacy flat layout, return <vault>/
+      3. If <vault>/code/ directory exists (even without state.json) → spaces layout
+      4. Otherwise → assume legacy flat layout
+
+    Args:
+        vault_path: Absolute path to the vault root directory
+
+    Returns:
+        The absolute path to the directory containing snippet data
+        (either <vault>/code/ for spaces layout, or <vault>/ for legacy)
+    """
+    # Check for spaces layout: code/.masscode/state.json
+    code_state = os.path.join(
+        vault_path, VAULT_CODE_SPACE, VAULT_META_DIR, VAULT_STATE_FILE
+    )
+    if os.path.isfile(code_state):
+        logger.debug(f"Detected spaces layout (code/): {vault_path}")
+        return os.path.join(vault_path, VAULT_CODE_SPACE)
+
+    # Check for legacy flat layout: .masscode/state.json at vault root
+    legacy_state = os.path.join(vault_path, VAULT_META_DIR, VAULT_STATE_FILE)
+    if os.path.isfile(legacy_state):
+        logger.debug(f"Detected legacy flat layout: {vault_path}")
+        return vault_path
+
+    # Fallback: if code/ directory exists, assume spaces layout
+    # (state.json might not exist yet for empty vaults)
+    code_dir = os.path.join(vault_path, VAULT_CODE_SPACE)
+    if os.path.isdir(code_dir):
+        logger.debug(f"Detected spaces layout (code/ dir exists): {vault_path}")
+        return code_dir
+
+    # Default to vault root (legacy)
+    logger.debug(f"Defaulting to legacy flat layout: {vault_path}")
+    return vault_path
 
 
 def is_markdown_vault(path: str) -> bool:
     """
     Check if a directory is a valid MassCode V5+ Markdown Vault.
 
-    A vault is identified by the presence of .masscode/state.json
-    at the vault root (flat layout, no code/ subdirectory).
+    Supports both layouts:
+      - Spaces layout: <vault>/code/.masscode/state.json
+      - Legacy flat:   <vault>/.masscode/state.json
 
     Args:
         path: Path to the potential vault directory
@@ -225,21 +307,76 @@ def is_markdown_vault(path: str) -> bool:
     if not os.path.isdir(expanded_path):
         return False
 
-    # Check for state.json in .masscode/ subdirectory
-    state_file = os.path.join(expanded_path, VAULT_META_DIR, VAULT_STATE_FILE)
-    return os.path.isfile(state_file)
+    # Check spaces layout: code/.masscode/state.json
+    spaces_state = os.path.join(
+        expanded_path, VAULT_CODE_SPACE, VAULT_META_DIR, VAULT_STATE_FILE
+    )
+    if os.path.isfile(spaces_state):
+        return True
+
+    # Check legacy flat layout: .masscode/state.json at vault root
+    legacy_state = os.path.join(expanded_path, VAULT_META_DIR, VAULT_STATE_FILE)
+    if os.path.isfile(legacy_state):
+        return True
+
+    return False
 
 
-def build_folder_lookup(vault_path: str) -> Dict[int, str]:
+def _read_folder_metadata(folder_path: str) -> Optional[Dict[str, Any]]:
     """
-    Build a mapping of folder_id → folder_name by scanning the vault.
+    Read folder metadata from a directory, supporting both file formats.
 
-    MassCode V5 stores folder metadata in .masscode-folder.yml files
-    inside each folder directory at the vault root. The key field is
-    'masscode_id' (not 'id').
+    MassCode uses .meta.yaml (current) and previously .masscode-folder.yml (legacy).
+    The current format uses 'id' as the folder ID key; the legacy format uses
+    'masscode_id'. This function handles both.
 
     Args:
-        vault_path: Absolute path to the vault root directory
+        folder_path: Absolute path to the folder directory
+
+    Returns:
+        Parsed metadata dict, or None if no valid metadata found
+    """
+    # Try current format: .meta.yaml
+    meta_path = os.path.join(folder_path, VAULT_FOLDER_META_FILE)
+    if os.path.isfile(meta_path):
+        try:
+            with open(meta_path, "r", encoding="utf-8") as f:
+                meta = yaml.safe_load(f)
+            if isinstance(meta, dict):
+                return meta
+        except (yaml.YAMLError, IOError, OSError) as e:
+            logger.warning(f"Failed to read .meta.yaml '{meta_path}': {e}")
+
+    # Try legacy format: .masscode-folder.yml
+    meta_path_legacy = os.path.join(folder_path, VAULT_FOLDER_META_FILE_LEGACY)
+    if os.path.isfile(meta_path_legacy):
+        try:
+            with open(meta_path_legacy, "r", encoding="utf-8") as f:
+                meta = yaml.safe_load(f)
+            if isinstance(meta, dict):
+                # Migrate masscode_id → id for consistent downstream handling
+                if "masscode_id" in meta and "id" not in meta:
+                    meta["id"] = meta["masscode_id"]
+                return meta
+        except (yaml.YAMLError, IOError, OSError) as e:
+            logger.warning(
+                f"Failed to read .masscode-folder.yml '{meta_path_legacy}': {e}"
+            )
+
+    return None
+
+
+def build_folder_lookup(space_dir: str) -> Dict[int, str]:
+    """
+    Build a mapping of folder_id → folder_name by scanning the vault space.
+
+    MassCode V5 stores folder metadata in .meta.yaml (current) or
+    .masscode-folder.yml (legacy) inside each folder directory.
+    The current format uses 'id' as the key; legacy uses 'masscode_id'.
+
+    Args:
+        space_dir: Absolute path to the space directory (e.g. <vault>/code/)
+                   where folders and .masscode/ live side by side
 
     Returns:
         Dict mapping folder ID (int) to folder name (str).
@@ -248,31 +385,32 @@ def build_folder_lookup(vault_path: str) -> Dict[int, str]:
     folder_lookup = {}
 
     try:
-        for entry in os.listdir(vault_path):
-            entry_path = os.path.join(vault_path, entry)
+        for entry in os.listdir(space_dir):
+            entry_path = os.path.join(space_dir, entry)
 
-            # Skip hidden dirs and non-directories
+            # Skip hidden dirs (like .masscode) and non-directories
             if entry.startswith(".") or not os.path.isdir(entry_path):
                 continue
 
-            # Check for .masscode-folder.yml
-            meta_file = os.path.join(entry_path, VAULT_FOLDER_META_FILE)
-            if not os.path.isfile(meta_file):
+            # Read folder metadata (supports both .meta.yaml and .masscode-folder.yml)
+            folder_meta = _read_folder_metadata(entry_path)
+            if not folder_meta:
+                continue
+
+            # Extract folder ID: try 'id' first (current), then 'masscode_id' (legacy)
+            folder_id = folder_meta.get("id") or folder_meta.get("masscode_id")
+            if folder_id is None:
                 continue
 
             try:
-                with open(meta_file, "r", encoding="utf-8") as f:
-                    folder_meta = yaml.safe_load(f)
+                folder_id = int(folder_id)
+            except (ValueError, TypeError):
+                logger.warning(f"Invalid folder ID in '{entry_path}': {folder_id}")
+                continue
 
-                if folder_meta and "masscode_id" in folder_meta:
-                    folder_id = int(folder_meta["masscode_id"])
-                    folder_name = folder_meta.get("name", entry)
-                    folder_lookup[folder_id] = folder_name
-                    logger.debug(f"Found folder: id={folder_id}, name='{folder_name}'")
-            except (yaml.YAMLError, ValueError, TypeError) as e:
-                logger.warning(f"Failed to parse folder metadata '{meta_file}': {e}")
-                # Fall back to directory name as folder name
-                folder_lookup[entry] = entry
+            folder_name = folder_meta.get("name", entry)
+            folder_lookup[folder_id] = folder_name
+            logger.debug(f"Found folder: id={folder_id}, name='{folder_name}'")
 
     except OSError as e:
         logger.error(f"Error scanning vault for folders: {e}", exc_info=True)
@@ -466,14 +604,21 @@ def load_snippets_markdown(vault_path: str) -> List[Dict[str, Any]]:
     """
     Load snippets from a MassCode V5+ Markdown Vault.
 
-    The vault structure is:
+    Supports both vault layouts:
+      - Spaces layout (current): state.json in <vault>/code/.masscode/
+        filePaths in state.json are relative to code/
+      - Legacy flat layout:      state.json in <vault>/.masscode/
+        filePaths in state.json are relative to vault root
+
+    Vault structure (spaces layout):
       <vault>/
-        .masscode/state.json       — Central snippet index
-        .masscode/inbox/           — Snippets without a folder
-        .masscode/trash/           — Deleted snippets
-        <FolderName>/
-          .masscode-folder.yml     — Folder metadata
-          <SnippetName>.md         — Snippet files
+        code/                       # Snippet space
+          .masscode/state.json      # Snippet index
+          .masscode/inbox/          # Unassigned snippets
+          .masscode/trash/          # Deleted snippets
+          <FolderName>/
+            .meta.yaml              # Folder metadata
+            <SnippetName>.md        # Snippet files
 
     Each snippet .md file has:
       - YAML frontmatter with metadata (name, isDeleted, contents[], etc.)
@@ -494,8 +639,13 @@ def load_snippets_markdown(vault_path: str) -> List[Dict[str, Any]]:
         logger.error(f"Vault directory not found: {expanded_path}")
         return []
 
-    # Locate state.json
-    state_file = os.path.join(expanded_path, VAULT_META_DIR, VAULT_STATE_FILE)
+    # Detect layout and resolve the correct space directory
+    # For spaces layout this returns <vault>/code/, for legacy it returns <vault>/
+    space_dir = resolve_vault_space_dir(expanded_path)
+    logger.debug(f"Resolved space directory: {space_dir}")
+
+    # Locate state.json in the space directory
+    state_file = os.path.join(space_dir, VAULT_META_DIR, VAULT_STATE_FILE)
     if not os.path.isfile(state_file):
         logger.error(f"Vault state file not found: {state_file}")
         return []
@@ -516,11 +666,14 @@ def load_snippets_markdown(vault_path: str) -> List[Dict[str, Any]]:
         logger.info("No snippets found in vault state file.")
         return []
 
-    # Build folder name lookup from .masscode-folder.yml files
-    folder_lookup = build_folder_lookup(expanded_path)
+    # Build folder name lookup from .meta.yaml / .masscode-folder.yml files
+    # Folders are in the space directory (code/), not the vault root
+    folder_lookup = build_folder_lookup(space_dir)
     logger.debug(f"Found {len(folder_lookup)} folders in vault.")
 
     # Process each snippet entry
+    # filePath in state.json is relative to the space directory (code/),
+    # NOT relative to the vault root
     snippets = []
     errors = 0
 
@@ -530,8 +683,10 @@ def load_snippets_markdown(vault_path: str) -> List[Dict[str, Any]]:
             logger.warning(f"Snippet entry has no filePath: {entry}")
             continue
 
-        # Resolve full path relative to vault root
-        full_path = os.path.join(expanded_path, file_path_rel)
+        # Resolve full path relative to the space directory (code/ for spaces layout)
+        # This is the key fix: old code used vault root, but filePaths are
+        # relative to the space dir
+        full_path = os.path.join(space_dir, file_path_rel)
 
         if not os.path.isfile(full_path):
             logger.warning(f"Snippet file not found: {full_path}")
@@ -546,8 +701,9 @@ def load_snippets_markdown(vault_path: str) -> List[Dict[str, Any]]:
             errors += 1
             continue
 
-        # Skip deleted snippets
-        if frontmatter.get("isDeleted"):
+        # Skip deleted snippets (isDeleted can be int 0/1 or bool)
+        is_deleted = frontmatter.get("isDeleted", 0)
+        if is_deleted and int(is_deleted) != 0:
             logger.debug(f"Skipping deleted snippet: {frontmatter.get('name', '?')}")
             continue
 
@@ -571,7 +727,10 @@ def load_snippets_markdown(vault_path: str) -> List[Dict[str, Any]]:
         folder_id = frontmatter.get("folderId")
         folder_name = None
         if folder_id is not None:
-            folder_name = folder_lookup.get(int(folder_id))
+            try:
+                folder_name = folder_lookup.get(int(folder_id))
+            except (ValueError, TypeError):
+                pass
 
         # Build V3-compatible snippet dict
         snippet = {

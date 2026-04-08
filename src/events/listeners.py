@@ -104,13 +104,13 @@ class KeywordQueryEventListener(EventListener):
                             return create_error_message(
                                 "Invalid Vault",
                                 f"'{expanded_path}' doesn't look like a MassCode vault. "
-                                "Missing '.masscode/state.json'.",
+                                "Missing '.masscode/state.json' (or 'code/.masscode/state.json').",
                                 "images/icon-warning.png",
                             )
                     return create_error_message(
                         "Markdown Vault Error",
                         f"Check that '{os.path.expanduser(db_path or '~/massCode/markdown-vault')}' "
-                        "exists and contains '.masscode/state.json'.",
+                        "exists and contains '.masscode/state.json' (or 'code/.masscode/state.json').",
                         "images/icon-error.png",
                     )
 

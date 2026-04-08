@@ -24,7 +24,20 @@ MASSCODE_V5 = "v5"  # Markdown Vault (V5+)
 # Markdown Vault internal constants (V5)
 VAULT_META_DIR = ".masscode"  # Metadata directory inside vault
 VAULT_STATE_FILE = "state.json"  # Central snippet index file
-VAULT_FOLDER_META_FILE = ".masscode-folder.yml"  # Per-folder metadata file
+
+# Folder metadata file names
+# MassCode migrated from .masscode-folder.yml to .meta.yaml
+# We support both for backward compatibility
+VAULT_FOLDER_META_FILE = ".meta.yaml"  # Current folder metadata file (massCode >= ~5.x)
+VAULT_FOLDER_META_FILE_LEGACY = ".masscode-folder.yml"  # Legacy folder metadata file
+
+# Vault "spaces" — massCode organizes vaults into sections (spaces)
+# Each space (code/, notes/, math/) has its own .masscode/state.json
+# The "code" space contains snippets, "notes" contains notes
+VAULT_CODE_SPACE = "code"
+VAULT_NOTES_SPACE = "notes"
+VAULT_MATH_SPACE = "math"
+VAULT_KNOWN_SPACES = [VAULT_CODE_SPACE, VAULT_NOTES_SPACE, VAULT_MATH_SPACE]
 
 # Default preferences
 DEFAULT_DB_PATH_V3 = "~/massCode/db.json"
