@@ -1,0 +1,12 @@
+{
+  "name": "masscode-snippet",
+  "version": "1.0.0",
+  "description": "Ulauncher extension for searching and copying MassCode snippets",
+  "private": true,
+  "scripts": {
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
+  }
+}

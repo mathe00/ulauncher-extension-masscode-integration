@@ -25,7 +25,6 @@ from ..constants import (
     VAULT_FOLDER_META_FILE,
     VAULT_FOLDER_META_FILE_LEGACY,
     VAULT_CODE_SPACE,
-    VAULT_KNOWN_SPACES,
 )
 
 logger = logging.getLogger(__name__)

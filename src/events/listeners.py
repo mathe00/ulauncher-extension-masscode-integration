@@ -10,7 +10,7 @@ This module provides event listeners for handling Ulauncher extension events:
 
 import logging
 import os
-from typing import List, Optional
+from typing import List
 
 import pyperclip
 
@@ -237,9 +237,7 @@ class KeywordQueryEventListener(EventListener):
                 "images/icon-error.png",
             )
 
-    def _handle_save_mode(
-        self, query: str, extension
-    ) -> RenderResultListAction:
+    def _handle_save_mode(self, query: str, extension) -> RenderResultListAction:
         """
         Handle the 'new' sub-command to save clipboard content as a new snippet.
 
@@ -289,7 +287,7 @@ class KeywordQueryEventListener(EventListener):
 
         # Extract optional name from query: "new my snippet name" → "my snippet name"
         # "new" alone → None (will be auto-generated)
-        remainder = query[len(SAVE_SUBCOMMAND):].strip()
+        remainder = query[len(SAVE_SUBCOMMAND) :].strip()
         snippet_name = remainder if remainder else None
 
         # Auto-generate name if not provided
@@ -438,14 +436,10 @@ class ItemEnterEventListener(EventListener):
             self._handle_history_action(data, extension)
             return None
         else:
-            logger.warning(
-                f"ItemEnterEvent received with unknown action: '{action}'"
-            )
+            logger.warning(f"ItemEnterEvent received with unknown action: '{action}'")
             return None
 
-    def _handle_save_action(
-        self, data: dict, extension
-    ) -> RenderResultListAction:
+    def _handle_save_action(self, data: dict, extension) -> RenderResultListAction:
         """
         Handle save_snippet action: save clipboard content to MassCode Inbox.
 
@@ -526,7 +520,9 @@ class ItemEnterEventListener(EventListener):
                 name=data.get("name", "unknown"),
                 success=False,
                 error=str(e),
-                icon=preferences.get("icon", "images/icon.png") if extension else "images/icon.png",
+                icon=preferences.get("icon", "images/icon.png")
+                if extension
+                else "images/icon.png",
             )
 
     def _handle_history_action(self, data: dict, extension) -> None:

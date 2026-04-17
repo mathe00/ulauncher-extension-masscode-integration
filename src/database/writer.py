@@ -27,12 +27,10 @@ from typing import Dict, Any, Optional
 import yaml
 
 from ..constants import (
-    MASSCODE_V3,
     MASSCODE_V4,
     MASSCODE_V5,
     VAULT_META_DIR,
     VAULT_STATE_FILE,
-    VAULT_CODE_SPACE,
     DEFAULT_SNIPPET_LANGUAGE,
     SNIPPET_NAME_MAX_LEN,
 )
@@ -123,7 +121,9 @@ def _save_v3(db_path: str, content: str, name: str) -> Dict[str, Any]:
         snippets = data.get("snippets", [])
 
         # Generate ID: max existing + 1, or 1 if empty
-        existing_ids = [s.get("id", 0) for s in snippets if isinstance(s.get("id"), int)]
+        existing_ids = [
+            s.get("id", 0) for s in snippets if isinstance(s.get("id"), int)
+        ]
         new_id = max(existing_ids) + 1 if existing_ids else 1
 
         # Current timestamp in milliseconds (matching MassCode format)
@@ -209,9 +209,7 @@ def _save_v4(db_path: str, content: str, name: str) -> Dict[str, Any]:
             )
 
             conn.commit()
-            logger.info(
-                f"Snippet '{name}' saved to V4 SQLite (id={snippet_id})."
-            )
+            logger.info(f"Snippet '{name}' saved to V4 SQLite (id={snippet_id}).")
             return {"success": True, "name": name, "path": expanded_path}
 
     except sqlite3.Error as e:
@@ -249,7 +247,10 @@ def _save_v5(vault_path: str, content: str, name: str) -> Dict[str, Any]:
     logger.info(f"Saving snippet to V5 Markdown Vault: {expanded_path}")
 
     if not os.path.isdir(expanded_path):
-        return {"success": False, "error": f"Vault directory not found: {expanded_path}"}
+        return {
+            "success": False,
+            "error": f"Vault directory not found: {expanded_path}",
+        }
 
     # Resolve the correct space directory (code/ for spaces, vault root for legacy)
     space_dir = resolve_vault_space_dir(expanded_path)
@@ -338,7 +339,7 @@ def _save_v5(vault_path: str, content: str, name: str) -> Dict[str, Any]:
     except json.JSONDecodeError as e:
         return {"success": False, "error": f"Invalid JSON in state file: {e}"}
     except PermissionError:
-        return {"success": False, "error": f"Permission denied writing to vault"}
+        return {"success": False, "error": "Permission denied writing to vault"}
     except OSError as e:
         return {"success": False, "error": f"File system error: {e}"}
 
