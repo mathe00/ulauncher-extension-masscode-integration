@@ -1,9 +1,5 @@
 # 📄 Ulauncher Plugin/Extension MassCode Integration
 
-> **🆕 Updated 2025-10-02: Now fully compatible with [MassCode V4.0.0](https://github.com/massCodeIO/massCode/releases/tag/v4.0.0) (SQLite) while maintaining V3 (JSON) support!**
-
-👋 **Welcome to the Ulauncher Plugin/Extension MassCode Integration repository!**
-
 This plugin/extension allows you to easily access your **[MassCode](https://masscode.io) snippets** directly from **[Ulauncher](https://ulauncher.io)**. No need to manually open MassCode or browse through folders to find your snippets anymore. Just type the snippet name or part of it in Ulauncher, and boom – access it instantly! 🚀
 
 ## 🚀 Features Available
@@ -13,7 +9,7 @@ This plugin/extension allows you to easily access your **[MassCode](https://mass
 - 📄 **Snippet preview**: View the content of your snippets directly in Ulauncher.
 - 🧩 **Multi-fragment support**: Select individual fragments from multi-fragment snippets instead of pasting everything together.
 - 🌟 **Personalized contextual autocomplete**: The extension intelligently prioritizes snippets based on your usage patterns.
-- ✨ **NEW! Smart Single Result**: Optionally, if a snippet overwhelmingly dominates your selections for a specific query, the extension can show only that snippet.
+- ✨ **Smart Single Result**: Optionally, if a snippet overwhelmingly dominates your selections for a specific query, the extension can show only that snippet.
 - ⏩ **Quick access**: Choose between copying the snippet to your clipboard or pasting it directly (okay, the pasting option isn't functional yet, but one day... maybe?).
 - 📥 **Save new snippets**: Save clipboard content directly to MassCode Inbox from Ulauncher — no need to open MassCode!
 
@@ -141,41 +137,6 @@ Here are some examples of how the Ulauncher Plugin/Extension MassCode Integratio
 
 *Feel free to include your own screenshots to showcase how the plugin/extension works in action!*
 
-## 🧠 Technical Details
-
-For the curious developers out there, our autocomplete and smart result systems implement:
-
-- Context-specific selection history tracking via a JSON-based storage system.
-- Graduated relevance scoring with different thresholds for exact, prefix, and fuzzy matches.
-- Optional single-result filtering based on a configurable selection dominance ratio.
-- Optimized performance with limited result counts and efficient matching algorithms.
-- Comprehensive error handling and logging for better debugging.
-- Type hints and modular code structure for easier maintenance and future expansion.
-
-The implementation balances user personalization with search precision - ensuring that contextual boosts and smart filtering only occur when meaningful, while maintaining the extension's responsive performance.
-
-## ✨ New: Ulauncher Plugin/Extension Text Tools
-
-If you're interested in more text transformations, check out my latest **[Text Tools plugin/extension](https://github.com/mathe00/ulauncher-plugin-text-tools)**! This new extension allows you to transform any input text into various formats such as Uppercase, CamelCase, Snake Case, and even SpongeBob Case (yes, that's a thing!). You can easily toggle these transformations from the Ulauncher settings, making it a super versatile and complete tool for text manipulation. 💡
-
 ## 🛠️ Contributing
 
-I've got to be honest – this plugin/extension was developed mostly thanks to **ChatGPT** helping me along the way! 😅 I haven't actively developed it much recently because, well, it works for me, and I'm lazy. But, I'm also a huge fan of **features and customization**, so I'm always open to **feedback, recommendations, and pull requests**.
-
-I built this for myself, but I figured others might also find it useful. So here it is, shared with the world. 🌍
-
-Feel free to open issues or submit pull requests if you have ideas on how to improve it. Contributions are always welcome!
-
-Oh, and **English isn't my first language**, so I apologize if I misunderstand something or take a bit longer to respond to issues or pull requests 😅. Thanks for your patience!
-
-## ⚖️ License
-
-I've added the **MIT License** because it's the most permissive and simple, but I'm not 100% sure it's the right one for this project. If there's a different license I should be using (especially regarding **Ulauncher** or **MassCode**), **please let me know**! I definitely don't want to cause any issues with these amazing tools – I just want to share what I've built in case it helps others. 😊
-
-## 🙏 Special Thanks
-
-A huge shout-out to the amazing developers of **[Ulauncher](https://ulauncher.io)** – hands down, the best application launcher in the universe for Linux! 🚀 You guys rock! And a big thank you to the team behind **[MassCode](https://masscode.io)** for building such a cool and powerful snippet manager. You've made coding life so much easier!
-
-## ⭐ Show Your Support
-
-I'm not really concerned about the number of stars, but if you find this project useful or interesting, consider giving it a star on GitHub to help me gauge the interest. If you'd rather not leave a star, that's totally fine – feel free to open an issue, submit a pull request, or even drop a message of support in an issue instead! All kinds of feedback, advice, and contributions are always welcome and appreciated. 😊
+Open to feedback, issues, and pull requests. 😊
