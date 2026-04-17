@@ -15,6 +15,7 @@ This plugin/extension allows you to easily access your **[MassCode](https://mass
 - 🌟 **Personalized contextual autocomplete**: The extension intelligently prioritizes snippets based on your usage patterns.
 - ✨ **NEW! Smart Single Result**: Optionally, if a snippet overwhelmingly dominates your selections for a specific query, the extension can show only that snippet.
 - ⏩ **Quick access**: Choose between copying the snippet to your clipboard or pasting it directly (okay, the pasting option isn't functional yet, but one day... maybe?).
+- 📥 **Save new snippets**: Save clipboard content directly to MassCode Inbox from Ulauncher — no need to open MassCode!
 
 ## 🆕 What's New (Recent Update)
 
@@ -50,6 +51,22 @@ We've rolled out updates to enhance your productivity:
         - `1.0`: Requires 100% dominance (the snippet was the *only* one ever picked for that query).
     - This feature requires "Enable Contextual Learning" to be active.
 - **Benefit**: Reduces clutter and speeds up access to your most-used snippets in familiar contexts.
+
+### 📥 Save New Snippets to MassCode Inbox
+
+- **Purpose**: Quickly save code snippets from your clipboard directly to MassCode's Inbox without opening MassCode.
+- **How it works**: Use the `new` sub-command with your MassCode keyword to save whatever is currently in your clipboard as a new snippet.
+- **Usage**:
+    1. Copy some code or text to your clipboard (from any source).
+    2. Open Ulauncher and type your MassCode keyword followed by `new`:
+       - `ms new` — Saves with an auto-generated name (taken from the first line of your clipboard content).
+       - `ms new my snippet name` — Saves with the custom name "my snippet name".
+    3. Press Enter — the snippet is saved to MassCode's **Inbox** folder.
+    4. A confirmation message appears: "Saved 'my snippet name' to MassCode Inbox".
+- **Auto-naming**: If you don't provide a name, the extension uses the first non-empty line of your clipboard content (up to 50 characters). Comment prefixes like `#`, `//`, `<!--` are stripped automatically.
+- **Organization**: Snippets are saved to MassCode's **Inbox** (unassigned). Open MassCode later to organize, tag, and move them to folders.
+- **Compatibility**: Works with all MassCode versions (V3 JSON, V4 SQLite, V5 Markdown Vault).
+- **Note**: For V3 (JSON) and V5 (Markdown), the extension uses atomic file writes to minimize the risk of data corruption if MassCode is running simultaneously.
 
 ### 🗄️ MassCode V4+ Support
 

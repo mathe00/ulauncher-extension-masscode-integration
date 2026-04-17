@@ -7,7 +7,7 @@ This module provides functionality for constructing extension result items
 for display in Ulauncher, including formatting, styling, and action chaining.
 """
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from ulauncher.api.shared.action.RenderResultListAction import RenderResultListAction
 from ulauncher.api.shared.item.ExtensionResultItem import ExtensionResultItem
@@ -15,6 +15,8 @@ from ulauncher.api.shared.action.CopyToClipboardAction import CopyToClipboardAct
 from ulauncher.api.shared.action.ExtensionCustomAction import ExtensionCustomAction
 from ulauncher.api.shared.action.HideWindowAction import HideWindowAction
 from ulauncher.api.shared.action.ActionList import ActionList
+
+from ..constants import CLIPBOARD_PREVIEW_MAX_LEN
 
 
 def create_error_message(
@@ -113,3 +115,91 @@ def create_result_items(
         )
 
     return RenderResultListAction(items)
+
+
+def create_save_result_item(
+    name: str,
+    clipboard_preview: str,
+    icon: str = "images/icon.png",
+) -> RenderResultListAction:
+    """
+    Create a result item for the 'save new snippet' action.
+
+    Shows the snippet name and a preview of the clipboard content.
+    When the user selects this item, it triggers the save action.
+
+    Args:
+        name (str): The name for the new snippet
+        clipboard_preview (str): Preview text of the clipboard content
+        icon (str, optional): Path to the icon. Defaults to "images/icon.png".
+
+    Returns:
+        RenderResultListAction: The action to render the save result
+    """
+    # Truncate clipboard preview for display
+    preview = clipboard_preview.replace("\n", " ").strip()
+    preview = (
+        (preview[: CLIPBOARD_PREVIEW_MAX_LEN - 3] + "...")
+        if len(preview) > CLIPBOARD_PREVIEW_MAX_LEN
+        else preview or "Empty clipboard"
+    )
+
+    # Build the action data that ItemEnterEventListener will handle
+    save_action_data = {
+        "action": "save_snippet",
+        "name": name,
+    }
+    save_trigger_action = ExtensionCustomAction(
+        data=save_action_data, keep_app_open=False
+    )
+
+    return RenderResultListAction(
+        [
+            ExtensionResultItem(
+                icon=icon,
+                name=f"Save as '{name}'",
+                description=preview,
+                on_enter=save_trigger_action,
+            )
+        ]
+    )
+
+
+def create_save_confirmation_item(
+    name: str,
+    success: bool,
+    error: Optional[str] = None,
+    icon: str = "images/icon.png",
+) -> RenderResultListAction:
+    """
+    Create a confirmation (or error) result item after a save attempt.
+
+    Displayed briefly to inform the user whether the snippet was saved
+    successfully or if an error occurred.
+
+    Args:
+        name (str): The name of the snippet that was (or wasn't) saved
+        success (bool): Whether the save succeeded
+        error (str, optional): Error message if save failed. Defaults to None.
+        icon (str, optional): Path to the icon. Defaults to "images/icon.png".
+
+    Returns:
+        RenderResultListAction: The action to render the confirmation
+    """
+    if success:
+        title = f"Saved '{name}' to MassCode Inbox"
+        description = "Open MassCode to organize and tag your new snippet."
+    else:
+        title = f"Failed to save '{name}'"
+        description = error or "Unknown error. Check Ulauncher logs."
+
+    return RenderResultListAction(
+        [
+            ExtensionResultItem(
+                icon=icon,
+                name=title,
+                description=description,
+                on_enter=HideWindowAction(),
+            )
+        ]
+    )

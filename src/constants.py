@@ -46,3 +46,9 @@ DEFAULT_DB_PATH_V5 = "~/massCode/markdown-vault"
 DEFAULT_SMART_RATIO_THRESHOLD = 0.0
 DEFAULT_CONTEXTUAL_LEARNING = True
 DEFAULT_QUERY_DEBOUNCE = 0.05
+
+# Save-new-snippet feature constants
+SAVE_SUBCOMMAND = "new"  # Sub-command to trigger save mode (e.g., "ms new")
+DEFAULT_SNIPPET_LANGUAGE = "plain_text"  # Default language for saved snippets
+CLIPBOARD_PREVIEW_MAX_LEN = 100  # Max chars shown in Ulauncher description
+SNIPPET_NAME_MAX_LEN = 50  # Max chars for auto-generated snippet name

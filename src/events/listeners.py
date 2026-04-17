@@ -4,13 +4,15 @@
 Event Listeners Module
 
 This module provides event listeners for handling Ulauncher extension events:
-- KeywordQueryEvent: Search queries and result display
-- ItemEnterEvent: Item selection and history recording
+- KeywordQueryEvent: Search queries, result display, and save-new-snippet mode
+- ItemEnterEvent: Item selection, history recording, and snippet saving
 """
 
 import logging
 import os
-from typing import List
+from typing import List, Optional
+
+import pyperclip
 
 from ulauncher.api.client.EventListener import EventListener
 from ulauncher.api.shared.event import KeywordQueryEvent, ItemEnterEvent
@@ -22,14 +24,20 @@ from ..database.loader import (
     is_sqlite_file,
     is_markdown_vault,
 )
+from ..database.writer import save_snippet_to_inbox, generate_snippet_name
 from ..learning.contextual_history import load_context_history, update_context_history
 from ..utils.fuzzy_search import (
     find_relevant_contexts,
     calculate_fuzzy_score,
 )
-from ..results.builder import create_error_message, create_result_items
+from ..results.builder import (
+    create_error_message,
+    create_result_items,
+    create_save_result_item,
+    create_save_confirmation_item,
+)
 from ..fragments.fragment_utils import expand_snippet_fragments
-from ..constants import FUZZY_SCORE_THRESHOLD, MAX_RESULTS
+from ..constants import FUZZY_SCORE_THRESHOLD, MAX_RESULTS, SAVE_SUBCOMMAND
 
 
 logger = logging.getLogger(__name__)
@@ -55,6 +63,18 @@ class KeywordQueryEventListener(EventListener):
         try:
             query = event.get_argument() or ""
             logger.info(f"Query received: '{query}'")
+
+            # --- Save-new-snippet sub-command ---
+            # Detect "new" sub-command: "ms new" or "ms new my snippet name"
+            # Branch to save mode instead of search mode
+            stripped_query = query.strip()
+            if (
+                stripped_query.lower() == SAVE_SUBCOMMAND
+                or stripped_query.lower().startswith(SAVE_SUBCOMMAND + " ")
+            ):
+                return self._handle_save_mode(stripped_query, extension)
+
+            # --- Existing: Search mode ---
             preferences = extension.preferences
             db_path = preferences.get("mc_db_path")
             contextual_learning_enabled = (
@@ -217,6 +237,77 @@ class KeywordQueryEventListener(EventListener):
                 "images/icon-error.png",
             )
 
+    def _handle_save_mode(
+        self, query: str, extension
+    ) -> RenderResultListAction:
+        """
+        Handle the 'new' sub-command to save clipboard content as a new snippet.
+
+        UX flow:
+          1. User types "ms new" → auto-generates name from clipboard first line
+          2. User types "ms new my name" → uses "my name" as snippet name
+          3. Shows preview of clipboard content as description
+          4. On select: triggers save to MassCode Inbox
+
+        Args:
+            query: The full query string (e.g., "new my snippet name")
+            extension: The MassCodeExtension instance
+
+        Returns:
+            RenderResultListAction with save preview result or error
+        """
+        preferences = extension.preferences
+        db_path = preferences.get("mc_db_path")
+        icon = preferences.get("icon", "images/icon.png")
+
+        # Validate database path is configured
+        if not db_path:
+            return create_error_message(
+                "Configuration required",
+                "Set MassCode DB path or vault directory to save snippets.",
+                "images/icon-warning.png",
+            )
+
+        # Read clipboard content
+        try:
+            clipboard_content = pyperclip.paste()
+        except Exception as e:
+            logger.error(f"Failed to read clipboard: {e}", exc_info=True)
+            return create_error_message(
+                "Clipboard Error",
+                "Could not read clipboard content.",
+                "images/icon-error.png",
+            )
+
+        # Check if clipboard has content
+        if not clipboard_content or not clipboard_content.strip():
+            return create_error_message(
+                "Empty Clipboard",
+                "Nothing to save — copy some text/code first, then try again.",
+                "images/icon.png",
+            )
+
+        # Extract optional name from query: "new my snippet name" → "my snippet name"
+        # "new" alone → None (will be auto-generated)
+        remainder = query[len(SAVE_SUBCOMMAND):].strip()
+        snippet_name = remainder if remainder else None
+
+        # Auto-generate name if not provided
+        if not snippet_name:
+            snippet_name = generate_snippet_name(clipboard_content)
+
+        logger.info(
+            f"Save mode: name='{snippet_name}', "
+            f"clipboard_len={len(clipboard_content)}, "
+            f"db_path='{db_path}'"
+        )
+
+        return create_save_result_item(
+            name=snippet_name,
+            clipboard_preview=clipboard_content,
+            icon=icon,
+        )
+
     def _match_snippets(
         self,
         snippets: List[dict],
@@ -315,27 +406,137 @@ class KeywordQueryEventListener(EventListener):
 
 
 class ItemEnterEventListener(EventListener):
-    """Event listener for handling item selection events (history recording)."""
+    """Event listener for handling item selection events (history recording and snippet saving)."""
 
-    def on_event(self, event: ItemEnterEvent, extension) -> None:
+    def on_event(self, event: ItemEnterEvent, extension):
         """
         Handle item enter event.
 
-        Records the user's selection to the context history for learning.
+        Dispatches to the appropriate handler based on the action type:
+        - "record_history": Record snippet selection for contextual learning
+        - "save_snippet": Save clipboard content as a new MassCode snippet
 
         Args:
             event (ItemEnterEvent): The item selection event
             extension: The MassCodeExtension instance
+
+        Returns:
+            RenderResultListAction for save confirmations, None for history recording
         """
         data = event.get_data()
-        logger.debug(f"ItemEnterEvent received for history. Data: {data}")
 
-        if not isinstance(data, dict) or data.get("action") != "record_history":
+        if not isinstance(data, dict):
+            logger.warning("ItemEnterEvent received with invalid data (not a dict).")
+            return None
+
+        action = data.get("action")
+
+        # Dispatch to the appropriate handler
+        if action == "save_snippet":
+            return self._handle_save_action(data, extension)
+        elif action == "record_history":
+            self._handle_history_action(data, extension)
+            return None
+        else:
             logger.warning(
-                "ItemEnterEvent received with invalid data/action for history."
+                f"ItemEnterEvent received with unknown action: '{action}'"
             )
-            return
+            return None
 
+    def _handle_save_action(
+        self, data: dict, extension
+    ) -> RenderResultListAction:
+        """
+        Handle save_snippet action: save clipboard content to MassCode Inbox.
+
+        Reads the snippet name from the action data, reads clipboard content,
+        and calls the writer module to persist the snippet.
+
+        Args:
+            data: Action data dict with "name" key
+            extension: The MassCodeExtension instance
+
+        Returns:
+            RenderResultListAction with success or error confirmation
+        """
+        try:
+            name = data.get("name", "")
+            preferences = extension.preferences
+            db_path = preferences.get("mc_db_path")
+            masscode_version = preferences.get("masscode_version", "v3")
+            icon = preferences.get("icon", "images/icon.png")
+
+            if not name:
+                logger.error("Save action received without snippet name.")
+                return create_save_confirmation_item(
+                    name="unknown",
+                    success=False,
+                    error="No snippet name provided.",
+                    icon=icon,
+                )
+
+            # Read clipboard content
+            try:
+                clipboard_content = pyperclip.paste()
+            except Exception as e:
+                logger.error(f"Failed to read clipboard for save: {e}", exc_info=True)
+                return create_save_confirmation_item(
+                    name=name,
+                    success=False,
+                    error=f"Could not read clipboard: {e}",
+                    icon=icon,
+                )
+
+            if not clipboard_content or not clipboard_content.strip():
+                return create_save_confirmation_item(
+                    name=name,
+                    success=False,
+                    error="Clipboard is empty — nothing to save.",
+                    icon=icon,
+                )
+
+            # Save to MassCode Inbox
+            result = save_snippet_to_inbox(
+                db_path=db_path,
+                masscode_version=masscode_version,
+                content=clipboard_content.strip(),
+                name=name,
+            )
+
+            if result.get("success"):
+                logger.info(f"Snippet saved successfully: {result}")
+                return create_save_confirmation_item(
+                    name=name,
+                    success=True,
+                    icon=icon,
+                )
+            else:
+                error_msg = result.get("error", "Unknown error")
+                logger.error(f"Snippet save failed: {error_msg}")
+                return create_save_confirmation_item(
+                    name=name,
+                    success=False,
+                    error=error_msg,
+                    icon=icon,
+                )
+
+        except Exception as e:
+            logger.error(f"Error during save action: {e}", exc_info=True)
+            return create_save_confirmation_item(
+                name=data.get("name", "unknown"),
+                success=False,
+                error=str(e),
+                icon=preferences.get("icon", "images/icon.png") if extension else "images/icon.png",
+            )
+
+    def _handle_history_action(self, data: dict, extension) -> None:
+        """
+        Handle record_history action: update contextual learning history.
+
+        Args:
+            data: Action data dict with "query", "snippet_name", "fragment_label" keys
+            extension: The MassCodeExtension instance
+        """
         try:
             query = data.get("query")
             snippet_name = data.get("snippet_name")
@@ -363,4 +564,3 @@ class ItemEnterEventListener(EventListener):
                 f"Error during history update via ItemEnterEvent: {e}",
                 exc_info=True,
             )
-        return None

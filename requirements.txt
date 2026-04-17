@@ -1,3 +1,4 @@
 pyperclip
 fuzzywuzzy
 python-Levenshtein  # optional, for improved performance with fuzzywuzzy
+pyyaml              # required for V5+ Markdown Vault (.meta.yaml and frontmatter parsing)
