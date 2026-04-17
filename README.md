@@ -1,4 +1,4 @@
-# 📄 Ulauncher Plugin/Extension MassCode Integration
+# 📄 Ulauncher Extension MassCode Integration
 
 This plugin/extension allows you to easily access your **[MassCode](https://masscode.io) snippets** directly from **[Ulauncher](https://ulauncher.io)**. No need to manually open MassCode or browse through folders to find your snippets anymore. Just type the snippet name or part of it in Ulauncher, and boom – access it instantly! 🚀
 
@@ -94,7 +94,7 @@ Unlike overly aggressive autocomplete systems that suggest the same items regard
 
 ## 🛠️ Installation
 
-To install and try out the **Ulauncher Plugin/Extension MassCode Integration**, follow these steps:
+To install and try out the **Ulauncher Extension MassCode Integration**, follow these steps:
 
 1. Clone this repository or download it as a ZIP file.
 2. In your terminal, navigate to your Ulauncher extensions folder. The path is typically `~/.local/share/ulauncher/extensions/`. If a `masscode-snippet` subfolder doesn't exist, create it.
@@ -127,7 +127,7 @@ That's it! The plugin/extension is now installed, and you can start searching yo
 
 ## 🖼️ Screenshots
 
-Here are some examples of how the Ulauncher Plugin/Extension MassCode Integration works:
+Here are some examples of how the Ulauncher Extension MassCode Integration works:
 
 <img src="images/screenshot-search-results.png" alt="Snippet search results" width="600"/>
 
