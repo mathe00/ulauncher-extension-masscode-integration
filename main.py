@@ -13,16 +13,42 @@ import sys
 import logging
 import importlib.util
 
-# Add the 'src' folder to PYTHONPATH for our modules
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+# ==============================================================================
+# SAFE LIBS LOADING — Prevent compiled .so conflicts with Ulauncher's runtime
+# ==============================================================================
+# Ulauncher adds the extension's root directory AND the libs/ subdirectory to
+# sys.path. If libs/ contains compiled C extensions (like Levenshtein .so files)
+# built for a different Python version, they crash the extension at import time
+# because Ulauncher's own code imports the same modules transitively.
+#
+# Strategy: Insert ONLY the specific pure-Python packages we need from libs/,
+# and ensure the libs/ directory itself is NOT at the front of sys.path where
+# it could override system packages.
+#
+# This fixes: https://github.com/mathe00/ulauncher-extension-masscode-integration/issues/4
+# ==============================================================================
+_EXT_DIR = os.path.dirname(os.path.abspath(__file__))
+_LIBS_DIR = os.path.join(_EXT_DIR, "libs")
+_SRC_DIR = os.path.join(_EXT_DIR, "src")
 
-# Ulauncher API imports
-from ulauncher.api.client.Extension import Extension
-from ulauncher.api.shared.event import KeywordQueryEvent, ItemEnterEvent
+# Add src/ to the front of sys.path for our module imports
+sys.path.insert(0, _SRC_DIR)
+
+# Ensure libs/ is in sys.path but AFTER system packages (low priority)
+# This allows our pure-Python libs (fuzzywuzzy, pyyaml, pyperclip) to be found
+# only if they're not already installed system-wide, while preventing compiled
+# .so leftovers in libs/ from shadowing Ulauncher's system-installed packages.
+if _LIBS_DIR in sys.path:
+    sys.path.remove(_LIBS_DIR)
+sys.path.append(_LIBS_DIR)
+
+# Ulauncher API imports (must come after sys.path manipulation above)
+from ulauncher.api.client.Extension import Extension  # noqa: E402
+from ulauncher.api.shared.event import KeywordQueryEvent, ItemEnterEvent  # noqa: E402
 
 # Imports from our modular architecture
-from src.events.listeners import KeywordQueryEventListener, ItemEnterEventListener
-from src.learning.contextual_history import ensure_history_file_exists
+from src.events.listeners import KeywordQueryEventListener, ItemEnterEventListener  # noqa: E402
+from src.learning.contextual_history import ensure_history_file_exists  # noqa: E402
 
 # Check if fuzzywuzzy is available (optional dependency)
 FUZZY_AVAILABLE = importlib.util.find_spec("fuzzywuzzy") is not None

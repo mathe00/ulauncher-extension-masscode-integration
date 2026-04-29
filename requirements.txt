@@ -1,4 +1,8 @@
 pyperclip
 fuzzywuzzy
-python-Levenshtein  # optional, for improved performance with fuzzywuzzy
+# NOTE: python-Levenshtein is intentionally excluded from this list.
+# It installs compiled .so files that can conflict with Ulauncher's own
+# Levenshtein dependency if the Python version differs (e.g., extension
+# installed with Python 3.12 but Ulauncher runs on Python 3.14).
+# fuzzywuzzy works without it (with a performance warning).
 pyyaml              # required for V5+ Markdown Vault (.meta.yaml and frontmatter parsing)

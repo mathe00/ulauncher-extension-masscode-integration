@@ -244,7 +244,9 @@ def _save_v5(vault_path: str, content: str, name: str) -> Dict[str, Any]:
         {"success": True, "name": str, "path": str} or {"success": False, "error": str}
     """
     expanded_path = os.path.expanduser(vault_path)
-    logger.info(f"Saving snippet to V5 Markdown Vault: {expanded_path}")
+    logger.info(
+        f"Saving snippet to V5 Markdown Vault: vault_path='{vault_path}' → expanded='{expanded_path}'"
+    )
 
     if not os.path.isdir(expanded_path):
         return {
@@ -254,9 +256,11 @@ def _save_v5(vault_path: str, content: str, name: str) -> Dict[str, Any]:
 
     # Resolve the correct space directory (code/ for spaces, vault root for legacy)
     space_dir = resolve_vault_space_dir(expanded_path)
+    logger.info(f"Resolved space directory: '{space_dir}'")
 
     # Locate state.json
     state_file = os.path.join(space_dir, VAULT_META_DIR, VAULT_STATE_FILE)
+    logger.debug(f"Looking for state.json at: '{state_file}'")
     if not os.path.isfile(state_file):
         return {
             "success": False,
