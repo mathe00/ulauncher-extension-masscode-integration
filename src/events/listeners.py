@@ -303,6 +303,7 @@ class KeywordQueryEventListener(EventListener):
         return create_save_result_item(
             name=snippet_name,
             clipboard_preview=clipboard_content,
+            clipboard_content=clipboard_content,
             icon=icon,
         )
 
@@ -443,11 +444,15 @@ class ItemEnterEventListener(EventListener):
         """
         Handle save_snippet action: save clipboard content to MassCode Inbox.
 
-        Reads the snippet name from the action data, reads clipboard content,
-        and calls the writer module to persist the snippet.
+        Uses clipboard content passed directly in action data (captured at
+        preview time) to avoid re-reading clipboard, which can fail on Linux
+        if xclip/xsel is missing or if clipboard content changed between
+        preview and save.
+
+        Falls back to pyperclip.paste() only if content was not in data.
 
         Args:
-            data: Action data dict with "name" key
+            data: Action data dict with "name" and optionally "content" keys
             extension: The MassCodeExtension instance
 
         Returns:
@@ -469,17 +474,24 @@ class ItemEnterEventListener(EventListener):
                     icon=icon,
                 )
 
-            # Read clipboard content
-            try:
-                clipboard_content = pyperclip.paste()
-            except Exception as e:
-                logger.error(f"Failed to read clipboard for save: {e}", exc_info=True)
-                return create_save_confirmation_item(
-                    name=name,
-                    success=False,
-                    error=f"Could not read clipboard: {e}",
-                    icon=icon,
-                )
+            # Use clipboard content from action data (captured at preview time)
+            # This avoids re-reading clipboard which can fail on Linux
+            clipboard_content = data.get("content")
+
+            if not clipboard_content or not clipboard_content.strip():
+                # Fallback: try reading clipboard directly
+                try:
+                    clipboard_content = pyperclip.paste()
+                except Exception as e:
+                    logger.error(
+                        f"Failed to read clipboard for save: {e}", exc_info=True
+                    )
+                    return create_save_confirmation_item(
+                        name=name,
+                        success=False,
+                        error="Could not read clipboard. Install xclip or xsel.",
+                        icon=icon,
+                    )
 
             if not clipboard_content or not clipboard_content.strip():
                 return create_save_confirmation_item(
@@ -488,6 +500,12 @@ class ItemEnterEventListener(EventListener):
                     error="Clipboard is empty — nothing to save.",
                     icon=icon,
                 )
+
+            logger.info(
+                f"Saving snippet: name='{name}', "
+                f"content_len={len(clipboard_content)}, "
+                f"db_path='{db_path}', version='{masscode_version}'"
+            )
 
             # Save to MassCode Inbox
             result = save_snippet_to_inbox(

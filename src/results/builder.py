@@ -120,6 +120,7 @@ def create_result_items(
 def create_save_result_item(
     name: str,
     clipboard_preview: str,
+    clipboard_content: str = "",
     icon: str = "images/icon.png",
 ) -> RenderResultListAction:
     """
@@ -131,6 +132,7 @@ def create_save_result_item(
     Args:
         name (str): The name for the new snippet
         clipboard_preview (str): Preview text of the clipboard content
+        clipboard_content (str): Full clipboard content to pass to save handler
         icon (str, optional): Path to the icon. Defaults to "images/icon.png".
 
     Returns:
@@ -145,12 +147,16 @@ def create_save_result_item(
     )
 
     # Build the action data that ItemEnterEventListener will handle
+    # Pass clipboard content directly to avoid re-reading clipboard
+    # which can fail on Linux (missing xclip/xsel) or if clipboard changed
     save_action_data = {
         "action": "save_snippet",
         "name": name,
+        "content": clipboard_content,
     }
+    # keep_app_open=True so the confirmation message is visible to the user
     save_trigger_action = ExtensionCustomAction(
-        data=save_action_data, keep_app_open=False
+        data=save_action_data, keep_app_open=True
     )
 
     return RenderResultListAction(
