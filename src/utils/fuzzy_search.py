@@ -19,6 +19,10 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+# Track whether we already warned about fuzzywuzzy being missing
+# (avoid spamming the log on every search query)
+_fuzzy_missing_warned = False
+
 
 def calculate_fuzzy_score(
     query: str,
@@ -38,29 +42,36 @@ def calculate_fuzzy_score(
 
     Note:
         Uses a weighted combination of name matching (70%) and content matching (30%)
+        When fuzzywuzzy is unavailable, falls back to simple substring matching.
     """
+    if not query:
+        return 100  # Show all results when no query is provided
+
     if FUZZY_AVAILABLE:
-        if not query:
-            return 100  # Show all if no query
-        else:
-            title_score = fuzz.partial_ratio(query.lower(), searchable_name.lower())
-            content_score = (
-                fuzz.partial_ratio(query.lower(), content_text.lower())
-                if content_text
-                else 0
-            )
-            combined_score = (0.7 * title_score) + (0.3 * content_score)
-            return int(combined_score)
-    else:
-        # Fallback to simple substring matching when fuzzywuzzy unavailable
-        if (
-            not query
-            or query.lower() in searchable_name.lower()
-            or (content_text and query.lower() in content_text.lower())
-        ):
-            return 51  # Above threshold
-        logger.warning("fuzzywuzzy not available, simple search used.")
-        return 0
+        title_score = fuzz.partial_ratio(query.lower(), searchable_name.lower())
+        content_score = (
+            fuzz.partial_ratio(query.lower(), content_text.lower())
+            if content_text
+            else 0
+        )
+        combined_score = (0.7 * title_score) + (0.3 * content_score)
+        return int(combined_score)
+
+    # Fallback: simple substring matching when fuzzywuzzy is unavailable
+    global _fuzzy_missing_warned
+    if not _fuzzy_missing_warned:
+        logger.warning(
+            "fuzzywuzzy not available — using basic substring search. "
+            "Install with: pip install fuzzywuzzy -t libs/"
+        )
+        _fuzzy_missing_warned = True
+
+    query_lower = query.lower()
+    if query_lower in searchable_name.lower() or (
+        content_text and query_lower in content_text.lower()
+    ):
+        return 51  # Just above the threshold (50) to pass the filter
+    return 0
 
 
 def find_relevant_contexts(
@@ -109,6 +120,13 @@ def calculate_relevance(normalized_query: str, hist_query: str) -> float:
     """
     Calculate relevance score between two queries.
 
+    Scoring tiers:
+      - Exact match: 1.0
+      - Query is prefix of history: 0.9 * length ratio
+      - History is prefix of query: 0.8 * length ratio
+      - Fuzzy similarity > 85% (requires fuzzywuzzy): 0.7 * ratio
+      - Otherwise: 0.0 (no relevance)
+
     Args:
         normalized_query (str): The normalized current query
         hist_query (str): The historical query to compare against
@@ -116,28 +134,21 @@ def calculate_relevance(normalized_query: str, hist_query: str) -> float:
     Returns:
         float: Relevance score (0.0 to 1.0), indicating how similar the queries are
     """
-    try:
-        if hist_query == normalized_query:
-            relevance = 1.0
-        elif len(normalized_query) > 2 and hist_query.startswith(normalized_query):
-            relevance = (len(normalized_query) / len(hist_query)) * 0.9
-        elif len(hist_query) > 2 and normalized_query.startswith(hist_query):
-            relevance = (len(hist_query) / len(normalized_query)) * 0.8
-        elif len(normalized_query) > 3 and len(hist_query) > 3:
-            if FUZZY_AVAILABLE:
-                ratio = fuzz.ratio(normalized_query, hist_query)
-                if ratio > 85:
-                    relevance = (ratio / 100) * 0.7
-                else:
-                    relevance = 0.0
-            else:
-                relevance = 0.0
-        else:
-            relevance = 0.0
-    except NameError:
-        pass  # Ignore fuzzy if not available
+    if hist_query == normalized_query:
+        return 1.0
 
-    return relevance
+    if len(normalized_query) > 2 and hist_query.startswith(normalized_query):
+        return (len(normalized_query) / len(hist_query)) * 0.9
+
+    if len(hist_query) > 2 and normalized_query.startswith(hist_query):
+        return (len(hist_query) / len(normalized_query)) * 0.8
+
+    if len(normalized_query) > 3 and len(hist_query) > 3 and FUZZY_AVAILABLE:
+        ratio = fuzz.ratio(normalized_query, hist_query)
+        if ratio > 85:
+            return (ratio / 100) * 0.7
+
+    return 0.0
 
 
 def get_context_score(

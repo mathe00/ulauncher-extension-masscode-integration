@@ -269,8 +269,16 @@ class KeywordQueryEventListener(EventListener):
         # Read clipboard content
         try:
             clipboard_content = pyperclip.paste()
+        except pyperclip.PyperclipException as e:
+            logger.error("Failed to read clipboard: %s", e, exc_info=True)
+            return create_error_message(
+                "Clipboard Error",
+                "Could not read clipboard. Install xclip or xsel: "
+                "'sudo apt install xclip'",
+                "images/icon-error.png",
+            )
         except Exception as e:
-            logger.error(f"Failed to read clipboard: {e}", exc_info=True)
+            logger.error("Unexpected clipboard error: %s", e, exc_info=True)
             return create_error_message(
                 "Clipboard Error",
                 "Could not read clipboard content.",
@@ -482,14 +490,24 @@ class ItemEnterEventListener(EventListener):
                 # Fallback: try reading clipboard directly
                 try:
                     clipboard_content = pyperclip.paste()
-                except Exception as e:
+                except pyperclip.PyperclipException as e:
                     logger.error(
-                        f"Failed to read clipboard for save: {e}", exc_info=True
+                        "Failed to read clipboard for save: %s", e, exc_info=True
                     )
                     return create_save_confirmation_item(
                         name=name,
                         success=False,
                         error="Could not read clipboard. Install xclip or xsel.",
+                        icon=icon,
+                    )
+                except Exception as e:
+                    logger.error(
+                        "Unexpected clipboard error during save: %s", e, exc_info=True
+                    )
+                    return create_save_confirmation_item(
+                        name=name,
+                        success=False,
+                        error="Could not read clipboard.",
                         icon=icon,
                     )
 

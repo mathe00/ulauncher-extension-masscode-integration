@@ -185,7 +185,11 @@ def _save_v4(db_path: str, content: str, name: str) -> Dict[str, Any]:
         return {"success": False, "error": f"SQLite DB not found: {expanded_path}"}
 
     try:
-        with sqlite3.connect(expanded_path) as conn:
+        # Use a timeout to wait for locks (MassCode might be writing at the same time)
+        conn = sqlite3.connect(expanded_path, timeout=5.0)
+        try:
+            # WAL mode allows concurrent reads while we write
+            conn.execute("PRAGMA journal_mode=WAL")
             # Current timestamp in milliseconds (matching MassCode format)
             now_ms = int(time.time() * 1000)
 
@@ -209,8 +213,13 @@ def _save_v4(db_path: str, content: str, name: str) -> Dict[str, Any]:
             )
 
             conn.commit()
-            logger.info(f"Snippet '{name}' saved to V4 SQLite (id={snippet_id}).")
+            logger.info("Snippet '%s' saved to V4 SQLite (id=%s).", name, snippet_id)
             return {"success": True, "name": name, "path": expanded_path}
+        except sqlite3.Error:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
 
     except sqlite3.Error as e:
         return {"success": False, "error": f"SQLite error: {e}"}
@@ -483,11 +492,16 @@ def _slugify(text: str) -> str:
 
 def _atomic_write_json(file_path: str, data: Any) -> None:
     """
-    Write JSON data to a file atomically using temp file + os.rename.
+    Write JSON data to a file atomically using temp file + os.replace.
 
     This minimizes the risk of corruption if MassCode is reading the file
-    at the same time. On Linux, os.rename() is atomic within the same
+    at the same time. On Linux, os.replace() is atomic within the same
     filesystem.
+
+    Steps:
+      1. Write to a hidden temp file in the same directory
+      2. Flush + fsync to ensure data hits disk
+      3. Atomically replace the target file with os.replace()
 
     Args:
         file_path: Target file path
@@ -507,10 +521,12 @@ def _atomic_write_json(file_path: str, data: Any) -> None:
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
+            f.flush()
+            os.fsync(f.fileno())
 
         # Atomic rename (replaces target if exists)
         os.replace(tmp_path, file_path)
-        logger.debug(f"Atomic write completed: {file_path}")
+        logger.debug("Atomic write completed: %s", file_path)
     except Exception:
         # Clean up temp file on failure
         try:

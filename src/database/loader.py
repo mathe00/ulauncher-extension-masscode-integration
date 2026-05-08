@@ -90,8 +90,10 @@ def load_snippets_sqlite(db_path: str) -> List[Dict[str, Any]]:
         return []
 
     try:
-        with sqlite3.connect(expanded_path) as conn:
+        conn = sqlite3.connect(expanded_path, timeout=5.0)
+        try:
             conn.row_factory = sqlite3.Row
+            conn.execute("PRAGMA journal_mode=WAL")
 
             query = """
             SELECT
@@ -174,6 +176,8 @@ def load_snippets_sqlite(db_path: str) -> List[Dict[str, Any]]:
 
             logger.info(f"{len(snippets)} active snippets loaded from SQLite.")
             return snippets
+        finally:
+            conn.close()
 
     except sqlite3.Error as e:
         logger.error(f"SQLite error loading snippets: {e}", exc_info=True)

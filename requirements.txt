@@ -1,3 +1,8 @@
+# Force pure-Python PyYAML to avoid compiled _yaml.so incompatibilities
+# across different Python versions (e.g., extension installed with 3.12
+# but Ulauncher runs on 3.14). The pure-Python version works everywhere.
+--no-binary yaml
+
 pyperclip
 fuzzywuzzy
 # NOTE: python-Levenshtein is intentionally excluded from this list.
