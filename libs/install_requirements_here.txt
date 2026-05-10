@@ -1,3 +1,7 @@
 Install requirements with this command :
 
-pip install -r ~/.local/share/ulauncher/extensions/masscode-snippet/requirements.txt -t ~/.local/share/ulauncher/extensions/masscode-snippet/libs
+pip install -r ~/.local/share/ulauncher/extensions/com.github.mathe00.ulauncher-plugin-masscode-integration/requirements.txt -t ~/.local/share/ulauncher/extensions/com.github.mathe00.ulauncher-plugin-masscode-integration/libs
+
+NOTE: The actual path depends on how you installed the extension:
+- Via Ulauncher "Add extension" URL: the path above is correct
+- Manual git clone: adjust the path to match your clone directory (e.g., masscode-snippet/)
