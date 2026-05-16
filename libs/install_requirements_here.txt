@@ -1,7 +1,14 @@
-Install requirements with this command :
+Install the required Python dependencies by running this command
+from your terminal (adjust the path to match YOUR extension directory):
 
-pip install -r ~/.local/share/ulauncher/extensions/com.github.mathe00.ulauncher-plugin-masscode-integration/requirements.txt -t ~/.local/share/ulauncher/extensions/com.github.mathe00.ulauncher-plugin-masscode-integration/libs
+    pip install -r requirements.txt -t libs/
 
-NOTE: The actual path depends on how you installed the extension:
-- Via Ulauncher "Add extension" URL: the path above is correct
-- Manual git clone: adjust the path to match your clone directory (e.g., masscode-snippet/)
+To find your extension directory, run:
+
+    ls ~/.local/share/ulauncher/extensions/com.github.mathe00.*
+
+Then cd into that directory and run the pip install command above.
+
+Example (your directory name may differ):
+    cd ~/.local/share/ulauncher/extensions/com.github.mathe00.ulauncher-extension-masscode-integration/
+    pip install -r requirements.txt -t libs/

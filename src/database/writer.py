@@ -254,7 +254,11 @@ def _save_v5(vault_path: str, content: str, name: str) -> Dict[str, Any]:
     """
     expanded_path = os.path.expanduser(vault_path)
     logger.info(
-        f"Saving snippet to V5 Markdown Vault: vault_path='{vault_path}' → expanded='{expanded_path}'"
+        "Saving snippet to V5 Markdown Vault: user_path='%s' expanded='%s' exists=%s is_dir=%s",
+        vault_path,
+        expanded_path,
+        os.path.exists(expanded_path),
+        os.path.isdir(expanded_path) if os.path.exists(expanded_path) else False,
     )
 
     if not os.path.isdir(expanded_path):
@@ -320,7 +324,15 @@ def _save_v5(vault_path: str, content: str, name: str) -> Dict[str, Any]:
 
         with open(md_filepath, "w", encoding="utf-8") as f:
             f.write(md_content)
-        logger.debug(f"Created snippet file: {md_filepath}")
+
+        # Verify the file was actually written (catches silent write failures)
+        if not os.path.isfile(md_filepath):
+            return {
+                "success": False,
+                "error": f"Snippet file was not created: {md_filepath}",
+            }
+        file_size = os.path.getsize(md_filepath)
+        logger.info("Created snippet file: %s (%d bytes)", md_filepath, file_size)
 
         # --- Step 4: Update state.json ---
         # filePath is relative to the space directory (code/)
@@ -345,7 +357,11 @@ def _save_v5(vault_path: str, content: str, name: str) -> Dict[str, Any]:
         _atomic_write_json(state_file, state)
 
         logger.info(
-            f"Snippet '{name}' saved to V5 Vault (id={new_snippet_id}, file={md_filename})."
+            "Snippet '%s' saved to V5 Vault (id=%d, file=%s, full_path=%s).",
+            name,
+            new_snippet_id,
+            md_filename,
+            md_filepath,
         )
         return {"success": True, "name": name, "path": md_filepath}
 
