@@ -74,4 +74,6 @@ libs/*
 # ============================================================================
 **/context_history.json
 context_history.json
+context_history.json.lock
 history.json
+*.lock
