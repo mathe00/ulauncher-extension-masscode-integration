@@ -18,8 +18,8 @@ from ulauncher.api.client.EventListener import EventListener
 from ulauncher.api.shared.event import KeywordQueryEvent, ItemEnterEvent
 from ulauncher.api.shared.action.RenderResultListAction import RenderResultListAction
 
+from ..database.cache import SnippetCache
 from ..database.loader import (
-    load_snippets,
     is_json_file,
     is_sqlite_file,
     is_markdown_vault,
@@ -104,9 +104,11 @@ class KeywordQueryEventListener(EventListener):
                     "images/icon-warning.png",
                 )
 
-            # Load snippets
+            # Load snippets (with caching — reloads only if source changed)
             masscode_version = preferences.get("masscode_version", "v3")
-            snippets = load_snippets(db_path=db_path, masscode_version=masscode_version)
+            snippets = SnippetCache.get_snippets(
+                db_path=db_path, masscode_version=masscode_version
+            )
             if not snippets:
                 expanded_path = os.path.expanduser(db_path) if db_path else ""
 
